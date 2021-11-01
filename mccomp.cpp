@@ -418,7 +418,6 @@ public:
 //===----------------------------------------------------------------------===//
 // Recursive Descent Parser - Function call for each production
 //===----------------------------------------------------------------------===//
-static std::unique_ptr<ASTnode> ElementParser();
 
 /* Add function calls for each production */
 
@@ -430,48 +429,59 @@ static void ElementParser(){
     auto inty = std::move(Result);
     //if(inty) return inty;
   }
-  if(CurTok.type == FLOAT_LIT){
+  else if(CurTok.type == FLOAT_LIT){
     auto Result = std::make_unique<IntASTnode>(CurTok, FloatVal);
     getNextToken();
     auto floaty = std::move(Result);
     //if(floaty) return floaty;
   }
-  if(CurTok.type == BOOL_LIT){
+  else if(CurTok.type == BOOL_LIT){
     auto Result = std::make_unique<IntASTnode>(CurTok, BoolVal);
     getNextToken();
     auto booly = std::move(Result);
     //if(booly) return booly;
   }
-  if(CurTok.type == MINUS){
+  else if(CurTok.type == MINUS){
     char oper = '-';
     TOKEN negativeToken = CurTok;
     getNextToken();
-    auto expression = ElementParser();
-      auto newResult = nullptr;
-    if(expression){
+    /*auto expression =*/ ElementParser();
+    auto newResult = nullptr;
+    //if(expression){
       //auto Result = std::make_unique<NegativeASTnode>(negativeToken, oper, std::move(expression));
       //auto newResult = std::move(Result);
-    }
+    //}
     //if(newResult) return newResult;
   }
-  if(CurTok.type == NOT){
+  else if(CurTok.type == NOT){
     char oper = '!';
     TOKEN notToken = CurTok;
     getNextToken();
-    auto expression = ElementParser();
-      auto newResult = nullptr;
-    if(expression){
+    /*auto expression =*/ ElementParser();
+    auto newResult = nullptr;
+    //if(expression){
       //auto Result = std::make_unique<NegativeASTnode>(notToken, oper, std::move(expression));
       //auto newResult = std::move(Result);
-    }
+    //}
     //if(newResult) return newResult;
   }
-  if(CurTok.type == IDENT){
+  else if(CurTok.type == IDENT){
     TOKEN identifier = CurTok;
     getNextToken();
     if(CurTok.type == LPAR) {
-
+      leftParanthesis(identifier);
     }
+    else{
+      putBackToken(CurTok);
+      putBackToken(identifier);
+      getNextToken();
+      //auto Result = std::make_unique<IdentASTnode>(CurTok);
+      getNextToken();
+      //if(std::move(Result)) return std::move(Result)
+    }
+  }
+  else if(CurTok.type == LPAR){
+
   }
 }
 
@@ -479,9 +489,16 @@ static void ElementParser(){
 static void leftParanthesis(TOKEN identifier){
   //auto identifierAuto = std::make_unique<IdentASTnode>(identifier);
   getNextToken();
-  auto argumentLIst = PARSEARGUMENTLIST
+  /*auto argumentLIst = */ArgsListParser();
+  getNextToken();
+  //return something here
 }
 
+
+static void ArgsListParser(){
+
+
+}
 
 // program ::= extern_list decl_list
 static void parser() {
