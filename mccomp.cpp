@@ -408,9 +408,9 @@ class IntASTnode : public ASTnode {
 public:
   IntASTnode(TOKEN tok, int val) : Val(val), Tok(tok) {}
   virtual Value *codegen() override;
-  // virtual std::string to_string() const override {
-  // return a sting representation of this AST node
-  //};
+  virtual std::string to_string() const override {
+    return "a sting representation of this AST node";
+  }
 };
 
 /* add other AST nodes as nessasary */
@@ -422,23 +422,50 @@ public:
 /* Add function calls for each production */
 
 //static std::unique_ptr<ASTnode> ElementParser(){
+
+
+static void ArgsListParser(){
+
+
+}
+
+static void leftParanthesis(TOKEN identifier){
+  //auto identifierAuto = std::make_unique<IdentASTnode>(identifier);
+  getNextToken();
+  /*auto argumentLIst = */ArgsListParser();
+  getNextToken();
+  //return something here
+}
+
+static void expressionParser(){
+
+}
+
+
+
+
+
+
+
 static void ElementParser(){
+  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+            CurTok.type);
   if(CurTok.type == INT_LIT){
-    auto Result = std::make_unique<IntASTnode>(CurTok, IntVal);
+    //auto Result = std::make_unique<IntASTnode>(CurTok, IntVal);
     getNextToken();
-    auto inty = std::move(Result);
+    //auto inty = std::move(Result);
     //if(inty) return inty;
   }
   else if(CurTok.type == FLOAT_LIT){
-    auto Result = std::make_unique<IntASTnode>(CurTok, FloatVal);
+    //auto Result = std::make_unique<IntASTnode>(CurTok, FloatVal);
     getNextToken();
-    auto floaty = std::move(Result);
+    //auto floaty = std::move(Result);
     //if(floaty) return floaty;
   }
   else if(CurTok.type == BOOL_LIT){
-    auto Result = std::make_unique<IntASTnode>(CurTok, BoolVal);
+    //auto Result = std::make_unique<IntASTnode>(CurTok, BoolVal);
     getNextToken();
-    auto booly = std::move(Result);
+    //auto booly = std::move(Result);
     //if(booly) return booly;
   }
   else if(CurTok.type == MINUS){
@@ -481,24 +508,16 @@ static void ElementParser(){
     }
   }
   else if(CurTok.type == LPAR){
-
+    getNextToken();
+    expressionParser(); 
+    //if(expression exists etc get next token)
+  }
+  else{
+    printf("ERROR\n");
   }
 }
 
 
-static void leftParanthesis(TOKEN identifier){
-  //auto identifierAuto = std::make_unique<IdentASTnode>(identifier);
-  getNextToken();
-  /*auto argumentLIst = */ArgsListParser();
-  getNextToken();
-  //return something here
-}
-
-
-static void ArgsListParser(){
-
-
-}
 
 // program ::= extern_list decl_list
 static void parser() {
@@ -542,10 +561,15 @@ int main(int argc, char **argv) {
   columnNo = 1;
 
   // get the first token
+  // getNextToken();
+  // while (CurTok.type != EOF_TOK) {
+  //   fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
+  //           CurTok.type);
+  //   getNextToken();
+  // }
   getNextToken();
-  while (CurTok.type != EOF_TOK) {
-    fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-            CurTok.type);
+  while(CurTok.type != EOF_TOK){
+    ElementParser();
     getNextToken();
   }
   fprintf(stderr, "Lexer Finished\n");
