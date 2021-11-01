@@ -437,8 +437,30 @@ static void leftParanthesis(TOKEN identifier){
   //return something here
 }
 
-static void expressionParser(){
+static void rvalParser(){
 
+}
+
+static void expressionParser(){
+  if (CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == MINUS || CurTok.type == NOT || CurTok.type == IDENT || CurTok.type == LPAR){
+    rvalParser();
+    return;
+  }
+  if (CurTok.type == IDENT){
+    TOKEN temporaryIdentifierStorage = CurTok;
+    if(CurTok.type == ASSIGN){
+      //AST NODE
+      getNextToken();
+      expressionParser();
+      //AST SOMETHING OR OTHER
+      return;
+    }
+    putBackToken(CurTok);
+    putBackToken(temporaryIdentifierStorage);
+    getNextToken();
+  }
+  printf("ERROR: Missing assignment or expression \n");
+  return;
 }
 
 
@@ -510,6 +532,7 @@ static void ElementParser(){
   else if(CurTok.type == LPAR){
     getNextToken();
     expressionParser(); 
+    getNextToken();
     //if(expression exists etc get next token)
   }
   else{
