@@ -438,11 +438,30 @@ static void leftParanthesis(TOKEN identifier){
 }
 
 static void rvalParser(){
+  if(curTokType(CurTok)){
+    //call term here
+    TOKEN storeCurrent = CurTok;
+    if(CurTok.type == OR){
+      getNextToken();
+      rvalParser();
+      return;
+    }
+    return;
+  }
+  printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
+}
 
+
+
+static bool curTokType(TOKEN Current){
+  if (Current.type == INT_LIT || Current.type == FLOAT_LIT || Current.type == BOOL_LIT || Current.type == MINUS || Current.type == NOT || Current.type == IDENT || Current.type == LPAR){
+    return true;
+  }
+  return false;
 }
 
 static void expressionParser(){
-  if (CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == MINUS || CurTok.type == NOT || CurTok.type == IDENT || CurTok.type == LPAR){
+  if (curTokType(CurTok)){
     rvalParser();
     return;
   }
@@ -536,7 +555,7 @@ static void ElementParser(){
     //if(expression exists etc get next token)
   }
   else{
-    printf("ERROR\n");
+    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
   }
 }
 

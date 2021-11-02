@@ -43,7 +43,7 @@ stmt_list    := stmt stmt_list
 expr_stmt    := expr ";"
 	            | ";"
 rval         := term rval'
-rval'        := 11 term rval'
+rval'        := "||" term rval'
 	            | epsilon
 term         := equivalence term'
 term'        := && equivalence term' 
