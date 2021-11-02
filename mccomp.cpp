@@ -437,9 +437,44 @@ static void leftParanthesis(TOKEN identifier){
   //return something here
 }
 
+
+static bool curTokType(TOKEN Current){
+  if (Current.type == INT_LIT || Current.type == FLOAT_LIT || Current.type == BOOL_LIT || Current.type == MINUS || Current.type == NOT || Current.type == IDENT || Current.type == LPAR){
+    return true;
+  }
+  return false;
+}
+
+static bool AndTerm(){
+  return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
+}
+
+static void termParser(){
+  if(!AndTerm()){
+    printf("Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    return;
+  }
+  if(curTokType(CurTok)){
+    //equivalence
+    TOKEN storeCurrent =  CurTok;
+    if (CurTok.type == AND){
+      getNextToken();
+      termParser();
+      //IF(TERM && EQUIVALENCE)
+    }
+    else{
+      //IF epsiolon then just return equivalence
+    }
+  }
+  else {
+    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+  }
+  return;
+}
+
 static void rvalParser(){
   if(curTokType(CurTok)){
-    //call term here
+    termParser();
     TOKEN storeCurrent = CurTok;
     if(CurTok.type == OR){
       getNextToken();
@@ -449,15 +484,6 @@ static void rvalParser(){
     return;
   }
   printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
-}
-
-
-
-static bool curTokType(TOKEN Current){
-  if (Current.type == INT_LIT || Current.type == FLOAT_LIT || Current.type == BOOL_LIT || Current.type == MINUS || Current.type == NOT || Current.type == IDENT || Current.type == LPAR){
-    return true;
-  }
-  return false;
 }
 
 static void expressionParser(){
