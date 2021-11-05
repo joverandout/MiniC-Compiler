@@ -42,6 +42,8 @@ stmt_list    := stmt stmt_list
 	            | epsilon
 expr_stmt    := expr ";"
 	            | ";"
+expression	 := IDENT "=" expression
+				| rval
 rval         := term rval'
 rval'        := "||" term rval'
 	            | epsilon
