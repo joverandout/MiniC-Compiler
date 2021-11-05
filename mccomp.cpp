@@ -432,6 +432,17 @@ static bool argListChecker(){
   return true;
 }
 
+static bool curTokType(TOKEN Current){
+  if (Current.type == INT_LIT || Current.type == FLOAT_LIT || Current.type == BOOL_LIT || Current.type == MINUS || Current.type == NOT || Current.type == IDENT || Current.type == LPAR){
+    return true;
+  }
+  return false;
+}
+
+static bool AndTerm(){
+  return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
+}
+
 
 static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
   std::vector<std::unique_ptr<ASTnode>> stdList;
@@ -477,7 +488,9 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListParser(){
 
   if(CurTok.type != RPAR){
     printf("ERROR: Expected token RPAR ')'");
+    return vector;
   }
+  return stdList;
 }
 
 static void leftParanthesis(TOKEN identifier){
@@ -486,18 +499,6 @@ static void leftParanthesis(TOKEN identifier){
   /*auto argumentLIst = */auto temp = ArgsListParser();
   getNextToken();
   //return something here
-}
-
-
-static bool curTokType(TOKEN Current){
-  if (Current.type == INT_LIT || Current.type == FLOAT_LIT || Current.type == BOOL_LIT || Current.type == MINUS || Current.type == NOT || Current.type == IDENT || Current.type == LPAR){
-    return true;
-  }
-  return false;
-}
-
-static bool AndTerm(){
-  return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
 }
 
 
