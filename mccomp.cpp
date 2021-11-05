@@ -426,7 +426,6 @@ public:
 
 static void ArgsListParser(){
 
-
 }
 
 static void leftParanthesis(TOKEN identifier){
@@ -447,6 +446,22 @@ static bool curTokType(TOKEN Current){
 
 static bool AndTerm(){
   return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
+}
+
+static void equivalenceparser(){
+  if(curTokType(CurTok)){
+    //call relational
+
+    if(CurTok.type == EQ || CurTok.type == NE){
+      getNextToken();
+      equivalenceparser();
+      //if relationa equivalence'
+      //call equivalence
+    }
+  }
+  else{
+    printf("Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+  }
 }
 
 static void termParser(){
