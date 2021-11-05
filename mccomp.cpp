@@ -423,6 +423,10 @@ public:
 
 //static std::unique_ptr<ASTnode> ElementParser(){
 
+static void errorMessage(){
+  printf("Unexpected Token Encountered. %s was found at Row,Column [%d,%d] \n", CurTok.lexeme.c_str(), CurTok.lineNo, CurTok.columnNo);
+}
+
 static void expressionParser();
 static void subExprParser();
 
@@ -439,8 +443,21 @@ static bool curTokType(TOKEN Current){
   return false;
 }
 
+static bool exprstmt(){
+  if(CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR) return false;
+  return true;
+}
+
 static bool AndTerm(){
   return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
+}
+
+static bool checkTerm(int size, int tokens[13]){
+  for (size_t i = 0; i < size; i++)
+  {
+    if(CurTok.type == tokens[i]) return false;
+  }
+  return true;
 }
 
 
@@ -450,6 +467,7 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
 
   if(argListChecker() == true){
     printf("ERROR: Missing ',' or ')'\n");
+    errorMessage();
     return vector;
   }
   if(CurTok.type == COMMA){
@@ -460,6 +478,7 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
       default:
         std::string printable = "ERROR: Token " + CurTok.lexeme + " is not ',' (COMMA) as expected\n";
         printf("%s", printable.c_str());
+        errorMessage();     
         break;
     }
     expressionParser();
@@ -468,6 +487,7 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
   else{
     if(CurTok.type != RPAR){
       printf("ERROR: Expected token RPAR ')'\n");
+      errorMessage();   
       return vector;
     }
   }
@@ -480,6 +500,7 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListParser(){
 
   if(curTokType(CurTok) == false && CurTok.type != RPAR){
     printf("ERROR: Expected an identifier, literal or one of [MINUS '-', NOT '!', LPAR '(']");
+    errorMessage();   
     return vector;
   }
 
@@ -488,6 +509,7 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListParser(){
 
   if(CurTok.type != RPAR){
     printf("ERROR: Expected token RPAR ')'");
+    errorMessage();   
     return vector;
   }
   return stdList;
@@ -503,8 +525,6 @@ static void leftParanthesis(TOKEN identifier){
 
 
 static void ElementParser(){
-  fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
-            CurTok.type);
   if(CurTok.type == INT_LIT){
     //auto Result = std::make_unique<IntASTnode>(CurTok, IntVal);
     getNextToken();
@@ -570,6 +590,7 @@ static void ElementParser(){
   }
   else{
     printf("ERROR. Missing LPAR -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+    errorMessage();   
   }
 }
 
@@ -593,6 +614,7 @@ static void factorParser(){
     }
   }
   printf("ERROR. Missing factor -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+  errorMessage();   
 }
 
 static void plusOrMinus(){
@@ -615,6 +637,7 @@ static void subExprParser(){
   }
   else{
     printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    errorMessage();   
   }
 }
 
@@ -632,6 +655,7 @@ static void relationalParser(){
   }
   else{
     printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    errorMessage();   
   }
 }
 
@@ -648,12 +672,14 @@ static void equivalenceParser(){
   }
   else{
     printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    errorMessage();   
   }
 }
 
 static void termParser(){
   if(!AndTerm()){
     printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    errorMessage();   
     return;
   }
   if(curTokType(CurTok)){
@@ -670,6 +696,7 @@ static void termParser(){
   }
   else {
     printf("ERROR: Missing term -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+    errorMessage();   
   }
   return;
 }
@@ -686,6 +713,7 @@ static void rvalParser(){
     return;
   }
   printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
+  errorMessage();   
 }
 
 static void expressionParser(){
@@ -707,7 +735,42 @@ static void expressionParser(){
     getNextToken();
   }
   printf("ERROR: Missing assignment or expression \n");
+  errorMessage();   
   return;
+}
+
+static std::unique_ptr<ASTnode> expressionStatementParser(){
+  if(exprstmt() == true){
+    printf("ERROR: Missing identifer, literal, or SC ';', NOT '!', LPAR '(', or a literal\n");
+    errorMessage();   
+    return nullptr;
+  }
+  if(CurTok.type == SC){
+    getNextToken();
+    int list[13] = {IDENT, SC, LBRA, WHILE, IF, RETURN, MINUS, NOT, LPAR, INT_LIT, BOOL_LIT, FLOAT_LIT, RBRA};
+    if(checkTerm(13, list)){
+      printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
+      errorMessage();   
+    }
+  }
+  else{
+    /*auto x = */ expressionParser();
+    if(CurTok.type == SC){
+      getNextToken();
+    }
+    else{
+      printf("ERROR: Token ");
+      printf("%s", CurTok.lexeme.c_str());
+      printf(" is not SC ';' as expected.\n");
+      errorMessage();   
+    }
+    int list[13] = {IDENT, SC, LBRA, WHILE, IF, RETURN, MINUS, NOT, LPAR, INT_LIT, BOOL_LIT, FLOAT_LIT, RBRA};
+    if(checkTerm(13, list)){
+      printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
+      errorMessage();   
+    }
+  }
+  return nullptr;
 }
 
 
