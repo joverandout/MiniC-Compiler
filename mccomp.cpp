@@ -423,15 +423,67 @@ public:
 
 //static std::unique_ptr<ASTnode> ElementParser(){
 
+static void expressionParser();
+static void subExprParser();
 
-static void ArgsListParser(){
+static bool argListChecker(){
+  if(CurTok.type == COMMA ) return false;
+  if(CurTok.type == RPAR) return false;
+  return true;
+}
 
+
+static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
+  std::vector<std::unique_ptr<ASTnode>> stdList;
+  std::vector<std::unique_ptr<ASTnode>> vector;
+
+  if(argListChecker() == true){
+    printf("ERROR: Missing ',' or ')'\n");
+    return vector;
+  }
+  if(CurTok.type == COMMA){
+    switch (CurTok.type)
+    {
+      case COMMA:
+        getNextToken();
+      default:
+        std::string printable = "ERROR: Token " + CurTok.lexeme + " is not ',' (COMMA) as expected\n";
+        printf("%s", printable.c_str());
+        break;
+    }
+    expressionParser();
+    ArgsListPrimeParser();
+  }
+  else{
+    if(CurTok.type != RPAR){
+      printf("ERROR: Expected token RPAR ')'\n");
+      return vector;
+    }
+  }
+  return stdList;
+}
+
+static std::vector<std::unique_ptr<ASTnode>> ArgsListParser(){
+  std::vector<std::unique_ptr<ASTnode>> stdList;
+  std::vector<std::unique_ptr<ASTnode>> vector;
+
+  if(curTokType(CurTok) == false && CurTok.type != RPAR){
+    printf("ERROR: Expected an identifier, literal or one of [MINUS '-', NOT '!', LPAR '(']");
+    return vector;
+  }
+
+  expressionParser();
+  ArgsListPrimeParser();
+
+  if(CurTok.type != RPAR){
+    printf("ERROR: Expected token RPAR ')'");
+  }
 }
 
 static void leftParanthesis(TOKEN identifier){
   //auto identifierAuto = std::make_unique<IdentASTnode>(identifier);
   getNextToken();
-  /*auto argumentLIst = */ArgsListParser();
+  /*auto argumentLIst = */auto temp = ArgsListParser();
   getNextToken();
   //return something here
 }
