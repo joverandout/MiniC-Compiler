@@ -448,86 +448,6 @@ static bool AndTerm(){
   return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
 }
 
-static void equivalenceparser(){
-  if(curTokType(CurTok)){
-    //call relational
-
-    if(CurTok.type == EQ || CurTok.type == NE){
-      getNextToken();
-      equivalenceparser();
-      //if relationa equivalence'
-      //call equivalence
-    }
-  }
-  else{
-    printf("Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
-  }
-}
-
-static void termParser(){
-  if(!AndTerm()){
-    printf("Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
-    return;
-  }
-  if(curTokType(CurTok)){
-    //equivalence
-    TOKEN storeCurrent =  CurTok;
-    if (CurTok.type == AND){
-      getNextToken();
-      termParser();
-      //IF(TERM && EQUIVALENCE)
-    }
-    else{
-      //IF epsiolon then just return equivalence
-    }
-  }
-  else {
-    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-  }
-  return;
-}
-
-static void rvalParser(){
-  if(curTokType(CurTok)){
-    termParser();
-    TOKEN storeCurrent = CurTok;
-    if(CurTok.type == OR){
-      getNextToken();
-      rvalParser();
-      return;
-    }
-    return;
-  }
-  printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
-}
-
-static void expressionParser(){
-  if (curTokType(CurTok)){
-    rvalParser();
-    return;
-  }
-  if (CurTok.type == IDENT){
-    TOKEN temporaryIdentifierStorage = CurTok;
-    if(CurTok.type == ASSIGN){
-      //AST NODE
-      getNextToken();
-      expressionParser();
-      //AST SOMETHING OR OTHER
-      return;
-    }
-    putBackToken(CurTok);
-    putBackToken(temporaryIdentifierStorage);
-    getNextToken();
-  }
-  printf("ERROR: Missing assignment or expression \n");
-  return;
-}
-
-
-
-
-
-
 
 static void ElementParser(){
   fprintf(stderr, "Token: %s with type %d\n", CurTok.lexeme.c_str(),
@@ -596,8 +516,145 @@ static void ElementParser(){
     //if(expression exists etc get next token)
   }
   else{
-    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+    printf("ERROR. Missing LPAR -> Expected a literal, variable, identity, '(', '!', or '-'\n");
   }
+}
+
+
+static void factorParser(){
+  if(curTokType(CurTok)){
+    ElementParser();
+    switch (CurTok.type)
+    {
+    case ASTERIX:
+      getNextToken();
+      factorParser();
+    case MOD:
+      getNextToken();
+      factorParser();
+    case DIV:
+      getNextToken();
+      factorParser();
+    default:
+      return;
+    }
+  }
+  printf("ERROR. Missing factor -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+}
+
+static void plusOrMinus(){
+  getNextToken();
+  subExprParser();
+}
+
+static void subExprParser(){
+  if(curTokType(CurTok)){
+    factorParser();
+    switch (CurTok.type)
+    {
+    case PLUS:
+      plusOrMinus();
+    case MINUS:
+      plusOrMinus();
+    default:
+      return;
+    }
+  }
+  else{
+    printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+  }
+}
+
+static void relationalParser(){
+  if(curTokType(CurTok)){
+    subExprParser();
+    switch (CurTok.type)
+    {
+    case LE || LT || GE || GT:
+      getNextToken();
+      relationalParser();
+    default:
+      return;
+    }
+  }
+  else{
+    printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+  }
+}
+
+static void equivalenceParser(){
+  if(curTokType(CurTok)){
+    relationalParser();
+
+    if(CurTok.type == EQ || CurTok.type == NE){
+      getNextToken();
+      equivalenceParser();
+      //if relationa equivalence'
+      //call equivalence
+    }
+  }
+  else{
+    printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+  }
+}
+
+static void termParser(){
+  if(!AndTerm()){
+    printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    return;
+  }
+  if(curTokType(CurTok)){
+    //equivalence
+    TOKEN storeCurrent =  CurTok;
+    if (CurTok.type == AND){
+      getNextToken();
+      termParser();
+      //IF(TERM && EQUIVALENCE)
+    }
+    else{
+      //IF epsiolon then just return equivalence
+    }
+  }
+  else {
+    printf("ERROR: Missing term -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+  }
+  return;
+}
+
+static void rvalParser(){
+  if(curTokType(CurTok)){
+    termParser();
+    TOKEN storeCurrent = CurTok;
+    if(CurTok.type == OR){
+      getNextToken();
+      rvalParser();
+      return;
+    }
+    return;
+  }
+  printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
+}
+
+static void expressionParser(){
+  if (curTokType(CurTok)){
+    rvalParser();
+    return;
+  }
+  if (CurTok.type == IDENT){
+    TOKEN temporaryIdentifierStorage = CurTok;
+    if(CurTok.type == ASSIGN){
+      //AST NODE
+      getNextToken();
+      expressionParser();
+      //AST SOMETHING OR OTHER
+      return;
+    }
+    putBackToken(CurTok);
+    putBackToken(temporaryIdentifierStorage);
+    getNextToken();
+  }
+  printf("ERROR: Missing assignment or expression \n");
+  return;
 }
 
 
