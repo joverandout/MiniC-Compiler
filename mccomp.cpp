@@ -636,15 +636,19 @@ static void subExprParser(){
     {
     case PLUS:
       plusOrMinus();
+      break;
     case MINUS:
       plusOrMinus();
+      break;
     default:
       return;
+      break;
     }
   }
   else{
     line();printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
-    errorMessage();   
+    errorMessage();
+    getNextToken();
   }
 }
 
@@ -883,7 +887,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    factorParser();
+    subExprParser();
   }
   printf("============================\n");
   printf("%d Errors found\n", errorCount);
