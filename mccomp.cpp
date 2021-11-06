@@ -586,6 +586,7 @@ static void ElementParser(){
       putBackToken(identifier);
       getNextToken();
       //auto Result = std::make_unique<IdentASTnode>(CurTok);
+      getNextToken();
       //if(std::move(Result)) return std::move(Result)
     }
   }
@@ -646,7 +647,7 @@ static void subExprParser(){
     }
   }
   else{
-    line();printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
     errorMessage();
     getNextToken();
   }
@@ -657,16 +658,31 @@ static void relationalParser(){
     subExprParser();
     switch (CurTok.type)
     {
-    case LE || LT || GE || GT:
+    case LE:
       getNextToken();
       relationalParser();
+      break;
+    case LT:
+      getNextToken();
+      relationalParser();
+      break;
+    case GE:
+      getNextToken();
+      relationalParser();
+      break;
+    case GT:
+      getNextToken();
+      relationalParser();
+      break;
     default:
       return;
+      break;
     }
   }
   else{
-    line();printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
-    errorMessage();   
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    errorMessage();
+    getNextToken();
   }
 }
 
@@ -682,14 +698,14 @@ static void equivalenceParser(){
     }
   }
   else{
-    line();printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
     errorMessage();   
   }
 }
 
 static void termParser(){
   if(!AndTerm()){
-    line();printf("ERROR: Missing / invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
     errorMessage();   
     return;
   }
@@ -887,9 +903,9 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    subExprParser();
+    relationalParser();
   }
-  printf("============================\n");
+  if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
   fprintf(stderr, "Lexer Finished\n");
 
