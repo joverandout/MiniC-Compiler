@@ -532,6 +532,7 @@ static void leftParanthesis(TOKEN identifier){
 
 
 static void ElementParser(){
+  //printf("TOKEN = %s  &d\n", CurTok.lexeme.c_str(), CurTok.type);
   if(CurTok.type == INT_LIT){
     //auto Result = std::make_unique<IntASTnode>(CurTok, IntVal);
     getNextToken();
@@ -585,7 +586,6 @@ static void ElementParser(){
       putBackToken(identifier);
       getNextToken();
       //auto Result = std::make_unique<IdentASTnode>(CurTok);
-      getNextToken();
       //if(std::move(Result)) return std::move(Result)
     }
   }
@@ -597,8 +597,9 @@ static void ElementParser(){
   }
   else{
     line();
-    printf("ERROR. Missing LPAR -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-    errorMessage();   
+    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+    errorMessage(); 
+    getNextToken();  
   }
 }
 
@@ -606,24 +607,23 @@ static void ElementParser(){
 static void factorParser(){
   if(curTokType(CurTok)){
     ElementParser();
-    switch (CurTok.type)
-    {
-    case ASTERIX:
+    int t = CurTok.type;
+    TOKEN op = CurTok;
+    if((t==ASTERIX) || (t==DIV) || (t==MOD)) { //FIRST(rval6')
+        //rval6 = rval7 rval6'
       getNextToken();
       factorParser();
-    case MOD:
-      getNextToken();
-      factorParser();
-    case DIV:
-      getNextToken();
-      factorParser();
-    default:
-      return;
+    }
+    else{
+      ElementParser();
     }
   }
-  line();
-  printf("ERROR. Missing factor -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-  errorMessage();   
+  else{
+    line();
+    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+    errorMessage();  
+  }
+  
 }
 
 static void plusOrMinus(){
@@ -721,17 +721,16 @@ static void rvalParser(){
     }
     return;
   }
-  line();printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
-  errorMessage();   
+  else{
+    line();printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
+    errorMessage();   
+  }
 }
 
 static void expressionParser(){
-  if (curTokType(CurTok)){
-    rvalParser();
-    return;
-  }
   if (CurTok.type == IDENT){
     TOKEN temporaryIdentifierStorage = CurTok;
+    getNextToken();
     if(CurTok.type == ASSIGN){
       //AST NODE
       getNextToken();
@@ -743,8 +742,14 @@ static void expressionParser(){
     putBackToken(temporaryIdentifierStorage);
     getNextToken();
   }
-  line();printf("ERROR: Missing assignment or expression \n");
-  errorMessage();   
+  if (curTokType(CurTok)){
+    rvalParser();
+    return;
+  }
+  else{
+    line();printf("ERROR: Missing assignment or expression \n");
+    errorMessage();
+  }
   return;
 }
 
@@ -780,6 +785,52 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
     }
   }
   return nullptr;
+}
+
+static std::unique_ptr<ASTnode> statementParser(){
+  if(CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == MINUS || CurTok.type == NOT || CurTok.type == LPAR || CurTok.type == LBRA || CurTok.type == IF || CurTok.type == SC || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == IDENT){
+    switch (CurTok.type)
+    {
+    case RETURN:
+      //call return
+      return nullptr;
+      break;
+    case WHILE:
+      //call while  
+      break;
+    case LBRA:
+      //call LBRA
+      break;
+    case IF:
+      //call if
+      break;
+    default:
+      return expressionStatementParser();
+    }
+  }
+  else{
+    line();printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
+    errorMessage();
+    getNextToken();
+  }
+}
+
+static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
+  std::vector<std::unique_ptr<ASTnode>> list;
+  switch (CurTok.type)
+  {
+  case INT_LIT || FLOAT_LIT || BOOL_LIT || MINUS || NOT || LPAR || LBRA || IF || SC || RETURN || WHILE || IDENT:
+    statementListParser();
+    //if the statemt is something
+    while(CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == MINUS || CurTok.type == NOT || CurTok.type == LPAR || CurTok.type == LBRA || CurTok.type == IF || CurTok.type == SC || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == IDENT){
+      statementParser();
+    }
+    break;
+  default:
+    line();printf("ERROR: Incorrectly defined statement\n");
+    break;
+  }
+  return list;
 }
 
 
@@ -835,7 +886,6 @@ int main(int argc, char **argv) {
   getNextToken();
   while(CurTok.type != EOF_TOK){
     ElementParser();
-    getNextToken();
   }
   printf("============================\n");
   printf("%d Errors found\n", errorCount);
