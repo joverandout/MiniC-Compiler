@@ -614,14 +614,12 @@ static void factorParser(){
       getNextToken();
       factorParser();
     }
-    else{
-      ElementParser();
-    }
   }
   else{
     line();
     printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-    errorMessage();  
+    errorMessage();
+    getNextToken();  
   }
   
 }
@@ -885,7 +883,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    ElementParser();
+    factorParser();
   }
   printf("============================\n");
   printf("%d Errors found\n", errorCount);
