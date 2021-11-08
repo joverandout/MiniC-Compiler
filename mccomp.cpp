@@ -647,7 +647,7 @@ static void subExprParser(){
     }
   }
   else{
-    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
     getNextToken();
   }
@@ -680,7 +680,7 @@ static void relationalParser(){
     }
   }
   else{
-    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
     getNextToken();
   }
@@ -700,17 +700,13 @@ static void equivalenceParser(){
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
     errorMessage();   
+    getNextToken();
   }
 }
 
 static void termParser(){
-  if(!AndTerm()){
-    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
-    errorMessage();   
-    return;
-  }
   if(curTokType(CurTok)){
-    //equivalence
+    equivalenceParser();
     TOKEN storeCurrent =  CurTok;
     if (CurTok.type == AND){
       getNextToken();
@@ -718,12 +714,20 @@ static void termParser(){
       //IF(TERM && EQUIVALENCE)
     }
     else{
+      return;
       //IF epsiolon then just return equivalence
     }
   }
+  else if(!AndTerm()){
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
+    errorMessage();   
+    getNextToken();
+    return;
+  }
   else {
     line();printf("ERROR: Missing term -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-    errorMessage();   
+    errorMessage();  
+    getNextToken(); 
   }
   return;
 }
@@ -903,7 +907,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    relationalParser();
+    termParser();
   }
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
