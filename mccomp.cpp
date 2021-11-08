@@ -818,7 +818,7 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
       getNextToken(); 
     }
     if(!(CurTok.type == EOF_TOK || CurTok.type == EOF || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA)){
-      line();printf("here ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
+      line();printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
       errorMessage();  
       getNextToken(); 
     }
@@ -826,52 +826,70 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
   return nullptr;
 }
 
-static std::unique_ptr<ASTnode> statementParser(){
-  if(CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == MINUS || CurTok.type == NOT || CurTok.type == LPAR || CurTok.type == LBRA || CurTok.type == IF || CurTok.type == SC || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == IDENT){
-    switch (CurTok.type)
-    {
-    case RETURN:
-      //call return
-      return nullptr;
-      break;
-    case WHILE:
-      //call while  
-      break;
-    case LBRA:
-      //call LBRA
-      break;
-    case IF:
-      //call if
-      break;
-    default:
-      return expressionStatementParser();
-    }
-  }
+
+static void statementParser(){
+  if(CurTok.type == IF) //call if;
+    return;
+  else if(CurTok.type == WHILE)//call while;
+    return;
+  else if(CurTok.type == RETURN) //call block
+    return;
+  else if(CurTok.type == LBRA) //call block;
+    return;
   else{
-    line();printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
-    errorMessage();
-    getNextToken();
+    expressionStatementParser();
   }
 }
 
 static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
-  std::vector<std::unique_ptr<ASTnode>> list;
-  switch (CurTok.type)
-  {
-  case INT_LIT || FLOAT_LIT || BOOL_LIT || MINUS || NOT || LPAR || LBRA || IF || SC || RETURN || WHILE || IDENT:
-    statementListParser();
-    //if the statemt is something
-    while(CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == MINUS || CurTok.type == NOT || CurTok.type == LPAR || CurTok.type == LBRA || CurTok.type == IF || CurTok.type == SC || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == IDENT){
+  // if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA){
+
+  // }
+  // else{
+  //   line();printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
+  //   errorMessage();
+  //   getNextToken();
+  //   std::vector<std::unique_ptr<ASTnode>> nullpointer;
+  //   return nullpointer;
+  // }
+  // if(CurTok.type == RBRA){
+  //   if(!(CurTok.type == RBRA)){
+  //     line();printf("ERROR: Missing RBRA '{'\n");
+  //     errorMessage();
+  //     getNextToken();
+  //   }
+  //   std::vector<std::unique_ptr<ASTnode>> nullpointer;
+  //   return nullpointer;
+  // }
+  // else{
+  //   statementParser();
+  //   auto stmtlist = statementListParser();
+
+  //   if(!(CurTok.type == RBRA)){
+  //     line();printf("ERROR: Missing RBRA '{'\n");
+  //     errorMessage();
+  //     getNextToken();
+  //   }
+  // }
+  std::vector<std::unique_ptr<ASTnode>> statements;
+  std::vector<std::unique_ptr<ASTnode>> listOfStatements;
+
+  if(CurTok.type == RBRA){
+    return statements;
+  }
+  if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
+    statementParser();
+    while(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
       statementParser();
     }
-    break;
-  default:
-    line();printf("ERROR: Incorrectly defined statement\n");
-    break;
   }
-  return list;
+  else{
+    line();printf("ERROR: Statement defined incorrectly");
+    errorMessage();
+    getNextToken();
+  }
+  return statements;
 }
-
 
 
 // program ::= extern_list decl_list
@@ -924,7 +942,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    expressionStatementParser();
+    auto blank = statementListParser();
   }
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
