@@ -459,6 +459,10 @@ static bool AndTerm(){
   return(CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
 }
 
+static bool OrTerm(){
+  return(CurTok.type == OR || CurTok.type==AND || (CurTok.type==IDENT || CurTok.type==SC || CurTok.type==COMMA || CurTok.type==RPAR || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==OR));
+}
+
 static bool checkTerm(int size, int tokens[13]){
   for (size_t i = 0; i < size; i++)
   {
@@ -743,9 +747,16 @@ static void rvalParser(){
     }
     return;
   }
+  else if(!OrTerm()){
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
+    errorMessage();   
+    getNextToken();
+    return;
+  }
   else{
     line();printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
     errorMessage();   
+    getNextToken();
   }
 }
 
@@ -771,6 +782,7 @@ static void expressionParser(){
   else{
     line();printf("ERROR: Missing assignment or expression \n");
     errorMessage();
+    getNextToken();
   }
   return;
 }
@@ -778,7 +790,8 @@ static void expressionParser(){
 static std::unique_ptr<ASTnode> expressionStatementParser(){
   if(exprstmt() == true){
     line();printf("ERROR: Missing identifer, literal, or SC ';', NOT '!', LPAR '(', or a literal\n");
-    errorMessage();   
+    errorMessage();  
+    getNextToken(); 
     return nullptr;
   }
   if(CurTok.type == SC){
@@ -786,24 +799,28 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
     int list[13] = {IDENT, SC, LBRA, WHILE, IF, RETURN, MINUS, NOT, LPAR, INT_LIT, BOOL_LIT, FLOAT_LIT, RBRA};
     if(checkTerm(13, list)){
       line();printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
-      errorMessage();   
+      errorMessage();  
+      getNextToken(); 
     }
   }
   else{
     /*auto x = */ expressionParser();
     if(CurTok.type == SC){
+      //printf("%s - %d\n", CurTok.lexeme.c_str(), CurTok.type);
       getNextToken();
+      //printf("%s - %d\n", CurTok.lexeme.c_str(), CurTok.type);
     }
     else{
-      line();printf("ERROR: Token ");
+      line();printf("ERROR: No semi colon at line end, instead Token ");
       printf("%s", CurTok.lexeme.c_str());
-      printf(" is not SC ';' as expected.\n");
-      errorMessage();   
+      printf(" was encountered rather than ';' as expected.\n");
+      errorMessage();  
+      getNextToken(); 
     }
-    int list[13] = {IDENT, SC, LBRA, WHILE, IF, RETURN, MINUS, NOT, LPAR, INT_LIT, BOOL_LIT, FLOAT_LIT, RBRA};
-    if(checkTerm(13, list)){
-      line();printf("ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
-      errorMessage();   
+    if(!(CurTok.type == EOF_TOK || CurTok.type == EOF || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA)){
+      line();printf("here ERROR: Missing identifier, or SC ';', LBRA '{', RBRA '{', WHILE, IF, MINUS '-', NOT '!', LPAR '(' RETURN, or a literal.\n");
+      errorMessage();  
+      getNextToken(); 
     }
   }
   return nullptr;
@@ -907,7 +924,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    termParser();
+    expressionStatementParser();
   }
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
