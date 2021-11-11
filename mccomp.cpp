@@ -959,6 +959,48 @@ static std::unique_ptr<ASTnode> localDeclParser(){
   return nullptr;
 }
 
+static std::unique_ptr<typeASTnode> typeSpecParser(){
+  if(CurTok.type != VOID_TOK){
+    if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK){
+      return variableTypeParser();
+    }
+    line();printf("ERROR: Missing a declaration type");
+    return nullptr;
+  }
+  else{
+    if(CurTok.type == VOID_TOK){
+      auto returnValue = std::make_unique<typeASTnode>(CurTok);
+      getNextToken();
+      return returnValue;
+    }
+    else{
+      line();printf("ERROR: %s doesn't match expected type VOID_TOK", CurTok.lexeme.c_str());
+      errorMessage();
+    }
+  }
+  return nullptr;
+}
+
+static void functionDeclarationParser(){
+  auto nuller = typeSpecParser();
+  if(CurTok.type != IDENT){
+    line();printf("ERROR: Expected an identifier");
+    errorMessage();
+  }
+  getNextToken();
+  if(CurTok.type != LPAR){
+    line();printf("ERROR: Missing LPAR '('");
+    errorMessage();
+  }
+  getNextToken();
+  //CALL PARAMS
+  if(CurTok.type != RPAR){
+    line();printf("ERROR: Missing RPAR ')'");
+    errorMessage();
+  }
+  getNextToken();
+  //CALL BLOCK
+}
 
 // program ::= extern_list decl_list
 static void parser() {
