@@ -37,7 +37,7 @@ while_stmt   := "while" "(" expr ")" stmt
 block        := "{" local_decls stmt_list "}"
 local_decls  := local_decl local_decls
 	            | epsilon
-local_decl   := param ";"
+local_decl   := var_type IDENT ";"
 stmt_list    := stmt stmt_list
 	            | epsilon
 expr_stmt    := expr ";"
