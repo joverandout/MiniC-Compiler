@@ -449,6 +449,36 @@ public:
 
 };
 
+
+class BlockASTnode : public ASTnode {
+  std::vector<std::unique_ptr<ASTnode>> declarations;
+  std::vector<std::unique_ptr<ASTnode>> statements;
+
+public:
+  BlockASTnode(std::vector<std::unique_ptr<ASTnode>> newDeclarations, std::vector<std::unique_ptr<ASTnode>> newStatements) :
+  declarations(std::move(newDeclarations)), statements(std::move(newStatements)){}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+    std::string tostring = "BLOCK: \n";
+    if(declarations.size() >= 1){
+      tostring = tostring + "   -> Declarations of local variables: \n";
+      for (size_t i = 0; i < declarations.size(); i++)
+      {
+        tostring = tostring + "    - " + std::string(declarations.at(i)->to_string().c_str()) + "\n";
+      }
+      
+    }
+    if(statements.size() >= 1){
+      tostring = tostring + "   -> Statements: \n";
+      for (size_t i = 0; i < statements.size(); i++)
+      {
+        tostring = tostring + "    - " + std::string(statements.at(i)->to_string().c_str()) + "\n";
+      }
+    }
+    return tostring;
+  }
+};
+
 /* add other AST nodes as nessasary */
 
 //===----------------------------------------------------------------------===//
@@ -881,7 +911,7 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
 
   if(CurTok.type == RBRA){
     if(CurTok.type != RBRA){
-      line();printf("ERROR: Missing RBRA '}', instead encountered %s", CurTok.lexeme.c_str());
+      line();printf("ERROR: Missing RBRA '}', instead encountered %s\n", CurTok.lexeme.c_str());
     }
     return statements;
   }
@@ -892,7 +922,7 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
     }
   }
   else{
-    line();printf("ERROR: Statement defined incorrectly");
+    line();printf("ERROR: Statement defined incorrectly\n");
     errorMessage();
     getNextToken();
   }
@@ -901,7 +931,7 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
 
 static std::unique_ptr<typeASTnode> variableTypeParser(){
   if(CurTok.type != INT_TOK || CurTok.type != BOOL_TOK || CurTok.type != FLOAT_TOK){
-    line();printf("ERROR: Missing variable type, expected either INT, BOOL or FLOAT");
+    line();printf("ERROR: Missing variable type, expected either INT, BOOL or FLOAT\n");
     errorMessage();
   }
   if(CurTok.type == INT_TOK){
@@ -910,7 +940,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
       getNextToken();
       return std::make_unique<typeASTnode>(returnTok);
     }
-    line();printf("ERROR: %s does not match expected type INT", CurTok.lexeme.c_str());
+    line();printf("ERROR: %s does not match expected type INT\n", CurTok.lexeme.c_str());
     errorMessage();
     getNextToken();
   }
@@ -920,7 +950,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
       getNextToken();
       return std::make_unique<typeASTnode>(returnTok);
     }
-    line();printf("ERROR: %s does not match expected type BOOL", CurTok.lexeme.c_str());
+    line();printf("ERROR: %s does not match expected type BOOL\n", CurTok.lexeme.c_str());
     errorMessage();
     getNextToken();
   }
@@ -930,7 +960,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
       getNextToken();
       return std::make_unique<typeASTnode>(returnTok);
     }
-    line();printf("ERROR: %s does not match expected type FLOAT", CurTok.lexeme.c_str());
+    line();printf("ERROR: %s does not match expected type FLOAT\n", CurTok.lexeme.c_str());
     errorMessage();
     getNextToken();
   }
@@ -939,7 +969,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
 
 static std::unique_ptr<ASTnode> localDeclParser(){
   if(!(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK)){
-    line();printf("ERROR: Locally declared variable has no type");
+    line();printf("ERROR: Locally declared variable has no type\n");
     errorMessage();
   }
   else{
@@ -950,13 +980,13 @@ static std::unique_ptr<ASTnode> localDeclParser(){
         getNextToken();
       }
       else{
-        line();printf("ERROR: Missing semi colon at end of declaration. Expected ';'");
+        line();printf("ERROR: Missing semi colon at end of declaration. Expected ';'\n");
         errorMessage();
         getNextToken();
       }
     }
     else{
-      line();printf("ERROR: Missing IDENT in declaration. Expected 'IDENT'");
+      line();printf("ERROR: Missing IDENT in declaration. Expected 'IDENT'\n");
       errorMessage();
       getNextToken();
     }
@@ -982,16 +1012,16 @@ static std::vector<std::unique_ptr<ASTnode>> localDeclsParser(){
     if (CurTok.type==INT_TOK || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA ||CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT){
       return declarations;
     }
-    line();printf("ERROR: Incorrect definition of local declaration");
+    line();printf("ERROR: Incorrect definition of local declaration\n");
     errorMessage();
     getNextToken();
     return declarations;
   }
 }
 
-static std::unique_ptr<ASTnode> blockParser(){
+static std::unique_ptr<BlockASTnode> blockParser(){
   if(CurTok.type != LBRA){
-    line();printf("ERROR: Missing LBRA at beginning of block, expected to find '{'");
+    line();printf("ERROR: Missing LBRA at beginning of block, expected to find '{'\n");
     errorMessage();
     getNextToken();
     return nullptr;
@@ -1001,12 +1031,41 @@ static std::unique_ptr<ASTnode> blockParser(){
     auto declarations = localDeclsParser();
     auto statements = statementListParser();
     if(CurTok.type != RBRA){
-      line();printf("ERROR: Missing RBRA at end of block, expected to find '}'");
+      line();printf("ERROR: Missing RBRA at end of block, expected to find '}'\n");
       errorMessage();
       getNextToken();
       return nullptr;
     }
+    else{
+      getNextToken();
+      return std::make_unique<BlockASTnode>(std::move(declarations), std::move(statements));
+    }
   }
+}
+
+static std::unique_ptr<BlockASTnode> elseParser(){
+  if(CurTok.type != ELSE){
+    line();printf("ERROR: missing 'ELSE' declaration at the beginning of else block\n");
+    errorMessage();
+    getNextToken();
+  }
+  else{
+    getNextToken();
+    if(CurTok.type != LBRA){
+      line();printf("ERROR: missing LBRA '{' after 'ELSE'\n");
+      errorMessage();
+      getNextToken();
+    }
+    auto blockstatement = blockParser();
+    if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
+      return blockstatement;    
+    }
+    else{
+      line();printf("ERROR: Missing literal, identifier or SC, RBRA, WHILE, IF, RETURN, MINUS, NOT LPAR in ELSE block\n");
+      errorMessage();
+    }
+  }
+  return nullptr;
 }
 
 static std::unique_ptr<typeASTnode> typeSpecParser(){
@@ -1014,7 +1073,7 @@ static std::unique_ptr<typeASTnode> typeSpecParser(){
     if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK){
       return variableTypeParser();
     }
-    line();printf("ERROR: Missing a declaration type");
+    line();printf("ERROR: Missing a declaration type\n");
     return nullptr;
   }
   else{
@@ -1024,7 +1083,7 @@ static std::unique_ptr<typeASTnode> typeSpecParser(){
       return returnValue;
     }
     else{
-      line();printf("ERROR: %s doesn't match expected type VOID_TOK", CurTok.lexeme.c_str());
+      line();printf("ERROR: %s doesn't match expected type VOID_TOK\n", CurTok.lexeme.c_str());
       errorMessage();
     }
   }
@@ -1034,18 +1093,18 @@ static std::unique_ptr<typeASTnode> typeSpecParser(){
 static void functionDeclarationParser(){
   auto nuller = typeSpecParser();
   if(CurTok.type != IDENT){
-    line();printf("ERROR: Expected an identifier");
+    line();printf("ERROR: Expected an identifier\n");
     errorMessage();
   }
   getNextToken();
   if(CurTok.type != LPAR){
-    line();printf("ERROR: Missing LPAR '('");
+    line();printf("ERROR: Missing LPAR '('\n");
     errorMessage();
   }
   getNextToken();
   //CALL PARAMS
   if(CurTok.type != RPAR){
-    line();printf("ERROR: Missing RPAR ')'");
+    line();printf("ERROR: Missing RPAR ')'\n");
     errorMessage();
   }
   getNextToken();
