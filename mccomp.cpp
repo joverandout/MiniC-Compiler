@@ -912,6 +912,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
     }
     line();printf("ERROR: %s does not match expected type INT", CurTok.lexeme.c_str());
     errorMessage();
+    getNextToken();
   }
   if(CurTok.type == BOOL_LIT){
     if(CurTok.type == BOOL_LIT){
@@ -921,6 +922,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
     }
     line();printf("ERROR: %s does not match expected type BOOL", CurTok.lexeme.c_str());
     errorMessage();
+    getNextToken();
   }
   if(CurTok.type == FLOAT_TOK){
     if(CurTok.type == FLOAT_TOK){
@@ -930,6 +932,7 @@ static std::unique_ptr<typeASTnode> variableTypeParser(){
     }
     line();printf("ERROR: %s does not match expected type FLOAT", CurTok.lexeme.c_str());
     errorMessage();
+    getNextToken();
   }
   return nullptr;
 }
@@ -949,14 +952,61 @@ static std::unique_ptr<ASTnode> localDeclParser(){
       else{
         line();printf("ERROR: Missing semi colon at end of declaration. Expected ';'");
         errorMessage();
+        getNextToken();
       }
     }
     else{
       line();printf("ERROR: Missing IDENT in declaration. Expected 'IDENT'");
       errorMessage();
+      getNextToken();
     }
   }
   return nullptr;
+}
+
+static std::vector<std::unique_ptr<ASTnode>> localDeclsParser(){
+  std::vector<std::unique_ptr<ASTnode>> declarations;
+  if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
+    auto local = localDeclParser();
+    auto decls = localDeclsParser();
+    if(local != nullptr){
+      declarations.push_back(std::move(local));
+    }
+    for (auto &&i : decls)
+    {
+      declarations.push_back(std::move(i));
+    }  
+    return declarations;
+  }
+  else{
+    if (CurTok.type==INT_TOK || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA ||CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT){
+      return declarations;
+    }
+    line();printf("ERROR: Incorrect definition of local declaration");
+    errorMessage();
+    getNextToken();
+    return declarations;
+  }
+}
+
+static std::unique_ptr<ASTnode> blockParser(){
+  if(CurTok.type != LBRA){
+    line();printf("ERROR: Missing LBRA at beginning of block, expected to find '{'");
+    errorMessage();
+    getNextToken();
+    return nullptr;
+  }
+  else{
+    getNextToken();
+    auto declarations = localDeclsParser();
+    auto statements = statementListParser();
+    if(CurTok.type != RBRA){
+      line();printf("ERROR: Missing RBRA at end of block, expected to find '}'");
+      errorMessage();
+      getNextToken();
+      return nullptr;
+    }
+  }
 }
 
 static std::unique_ptr<typeASTnode> typeSpecParser(){

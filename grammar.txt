@@ -11,6 +11,7 @@ decl_list'   := decl decl_list'
 	            | epsilon
 decl         := var_decl
 		        | fun_decl
+fun_decl     := type_spec IDENT "(" params ")" block;
 var_decl     := var_type IDENT ";"
 type_spec    := "void" | var_type
 params       := param_list
