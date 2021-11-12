@@ -106,6 +106,7 @@ enum TOKEN_TYPE {
   INVALID = -100 // signal invalid token
 };
 
+
 // TOKEN struct is used to keep track of information about a token
 struct TOKEN {
   int type = -100;
