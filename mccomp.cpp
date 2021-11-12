@@ -458,7 +458,7 @@ class BlockASTnode : public ASTnode {
 public:
   BlockASTnode(std::vector<std::unique_ptr<ASTnode>> newDeclarations, std::vector<std::unique_ptr<ASTnode>> newStatements) :
   declarations(std::move(newDeclarations)), statements(std::move(newStatements)){}
-  virtual Value *codegen() override;
+  virtual Value *codegen() override {};
   virtual std::string to_string() const override {
     std::string tostring = "BLOCK: \n";
     if(declarations.size() >= 1){
@@ -487,7 +487,7 @@ class ifASTnode : public ASTnode{
 
 public:
   ifASTnode(std::unique_ptr<ASTnode> Expr, std::unique_ptr<BlockASTnode> Block, std::unique_ptr<BlockASTnode> ElseBlock) : expr(std::move(Expr)), block(std::move(Block)), elseBlock(std::move(ElseBlock)) {}
-  virtual Value *codegen() override;
+  virtual Value *codegen() override {};
   virtual std::string to_string() const override {
     std::string stringy = "\nIF STATEMENT:\n";
     stringy = stringy +   "\nCONDITION:    " + expr->to_string();
@@ -496,7 +496,7 @@ public:
       stringy = stringy + "\nELSE BLOCK:   " + elseBlock->to_string();
     }
     return stringy;
-  };
+  }
 };
 
 class whileASTnode : public ASTnode{
@@ -504,8 +504,8 @@ class whileASTnode : public ASTnode{
   std::unique_ptr<ASTnode> stmt;
 
 public:
-  whileASTnode(std::unique_ptr<ASTnode> expression, std::unique_ptr<ASTnode> statment) : expr(std::move(expression)), stmt(std::move(statement)){}
-  virtual Value *codegen() override;
+  whileASTnode(std::unique_ptr<ASTnode> expression, std::unique_ptr<ASTnode> statement) : expr(std::move(expression)), stmt(std::move(statement)){}
+  virtual Value *codegen() override {};
 
   virtual std::string to_string() const override{
     std::string stringy = "";
@@ -513,7 +513,7 @@ public:
     stringy = stringy + "\nExpression:     " + expr->to_string().c_str();
     stringy = stringy + "\nStatements:     " + stmt->to_string().c_str();
     return stringy;
-  };
+  }
 };
 
 /* add other AST nodes as nessasary */
@@ -537,6 +537,12 @@ static void errorMessage(){
 
 static std::unique_ptr<ASTnode> expressionParser();
 static void subExprParser();
+
+static std::unique_ptr<ifASTnode> ifParser();
+static std::unique_ptr<whileASTnode> whileParser();
+static std::unique_ptr<BlockASTnode> blockParser();
+
+
 
 static bool argListChecker(){
   if(CurTok.type == COMMA ) return false;
@@ -929,21 +935,34 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
 
 
 static std::unique_ptr<ASTnode> statementParser(){
-  if(CurTok.type == IF) //call if;
-    return nullptr;
+  if(CurTok.type == IF){ //call if;
+    auto ifF = ifParser();
+    if(ifF != nullptr) return std::move(ifF);
+  }
   else if(CurTok.type == WHILE)//call while;
-    return nullptr;
+  {
+    auto whileE = whileParser();
+    if(whileE != nullptr) return std::move(whileE);
+  }
   else if(CurTok.type == RETURN) //call block
-    return nullptr;
+  {
+    auto returnN = nullptr;
+    if(returnN != nullptr) return std::move(returnN);
+  }
   else if(CurTok.type == LBRA) //call block;
-    return nullptr;
-  else{
+  {
+    auto blockK = blockParser();
+    if(blockK != nullptr) return std::move(blockK);
+  }
+  else if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type ==  FLOAT_LIT || CurTok.type == MINUS || CurTok.type == NOT ||CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT){
     auto expressionStatements = expressionStatementParser();
     if(expressionStatements) return std::move(expressionStatements);
     return nullptr;
   }
-  line();printf("ERROR: No statement definition\n");
-  errorMessage();
+  else{
+    line();printf("ERROR: No statement definition\n");
+    errorMessage();
+  }
   return nullptr;
 }
 
