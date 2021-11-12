@@ -499,6 +499,23 @@ public:
   };
 };
 
+class whileASTnode : public ASTnode{
+  std::unique_ptr<ASTnode> expr;
+  std::unique_ptr<ASTnode> stmt;
+
+public:
+  whileASTnode(std::unique_ptr<ASTnode> expression, std::unique_ptr<ASTnode> statment) : expr(std::move(expression)), stmt(std::move(statement)){}
+  virtual Value *codegen() override;
+
+  virtual std::string to_string() const override{
+    std::string stringy = "";
+    stringy = stringy + "\nWHILE STATEMENT:";
+    stringy = stringy + "\nExpression:     " + expr->to_string().c_str();
+    stringy = stringy + "\nStatements:     " + stmt->to_string().c_str();
+    return stringy;
+  };
+};
+
 /* add other AST nodes as nessasary */
 
 //===----------------------------------------------------------------------===//
@@ -518,7 +535,7 @@ static void errorMessage(){
   printf("TOKEN: Unexpected Token, %s, Encountered.\nLOCATION: '%s' was found at Row,Column [%d,%d] \n", CurTok.lexeme.c_str(), CurTok.lexeme.c_str(), CurTok.lineNo, CurTok.columnNo);
 }
 
-static void expressionParser();
+static std::unique_ptr<ASTnode> expressionParser();
 static void subExprParser();
 
 static bool argListChecker(){
@@ -844,7 +861,7 @@ static void rvalParser(){
   }
 }
 
-static void expressionParser(){
+static std::unique_ptr<ASTnode> expressionParser(){
   if (CurTok.type == IDENT){
     TOKEN temporaryIdentifierStorage = CurTok;
     getNextToken();
@@ -853,7 +870,7 @@ static void expressionParser(){
       getNextToken();
       expressionParser();
       //AST SOMETHING OR OTHER
-      return;
+      return nullptr;
     }
     putBackToken(CurTok);
     putBackToken(temporaryIdentifierStorage);
@@ -861,14 +878,14 @@ static void expressionParser(){
   }
   if (curTokType(CurTok)){
     rvalParser();
-    return;
+    return nullptr;
   }
   else{
     line();printf("ERROR: Missing assignment or expression \n");
     errorMessage();
     getNextToken();
   }
-  return;
+  return nullptr;
 }
 
 static std::unique_ptr<ASTnode> expressionStatementParser(){
@@ -911,18 +928,23 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
 }
 
 
-static void statementParser(){
+static std::unique_ptr<ASTnode> statementParser(){
   if(CurTok.type == IF) //call if;
-    return;
+    return nullptr;
   else if(CurTok.type == WHILE)//call while;
-    return;
+    return nullptr;
   else if(CurTok.type == RETURN) //call block
-    return;
+    return nullptr;
   else if(CurTok.type == LBRA) //call block;
-    return;
+    return nullptr;
   else{
-    expressionStatementParser();
+    auto expressionStatements = expressionStatementParser();
+    if(expressionStatements) return std::move(expressionStatements);
+    return nullptr;
   }
+  line();printf("ERROR: No statement definition\n");
+  errorMessage();
+  return nullptr;
 }
 
 static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
@@ -1091,17 +1113,79 @@ static std::unique_ptr<BlockASTnode> elseParser(){
 
 static std::unique_ptr<ifASTnode> ifParser(){
   if(CurTok.type != IF){
-    line();printf("ERROR: Expected 'IF'");
+    line();printf("ERROR: Expected 'IF'\n");
     errorMessage();
     return nullptr;
   }
   else{
     getNextToken();
     if(CurTok.type == LPAR){
-      
+      getNextToken();
+    }
+    else{
+      line();printf("ERROR: Missing required LPAR '(' after IF declaration\n");
+      errorMessage();
+      getNextToken();
+    }
+    auto expression = expressionParser();
+    
+    if(CurTok.type == RPAR){
+      getNextToken();
+    }
+    else{
+      line();printf("ERROR: Missing required RPAR '(' after IF expression\n");
+      errorMessage();
+      getNextToken();
+    }
+    auto ifBlock = blockParser();
+    auto elseStatement = elseParser();
+
+    if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
+      auto returnBlock = std::make_unique<ifASTnode>(std::move(expression), std::move(ifBlock), std::move(elseStatement));
+      return std::move(returnBlock);
+    }
+    else{
+      line();printf("ERROR: Missing literal, identifier or SC, RBRA, WHILE, IF, RETURN, MINUS, NOT LPAR in ELSE block\n");
+      errorMessage();
+      return nullptr;
     }
   }
 }
+
+
+static std::unique_ptr<whileASTnode> whileParser(){
+  if(CurTok.type == WHILE){
+    getNextToken();
+    if(CurTok.type == LPAR){
+      getNextToken();
+      auto expression = expressionParser();
+      if(CurTok.type == RPAR){
+        getNextToken();
+        auto statement = statementParser();
+        if(statement != nullptr){
+          if(expression != nullptr){
+            return std::move(std::make_unique<whileASTnode>(std::move(expression), std::move(statement)));
+          }
+        }
+      }
+      else{
+        line();printf("ERROR: Missing RPAR ')' after 'WHILE' declaration\n");
+        errorMessage();
+      }
+    }
+    else{
+      line();printf("ERROR: Missing LPAR '(' after 'WHILE' declaration\n");
+      errorMessage();
+    }
+  }
+  else{
+    line();printf("ERROR: Missing 'WHILE' statement declaration\n");
+    errorMessage();
+    return nullptr;
+  }
+  return nullptr;
+}
+
 
 static std::unique_ptr<typeASTnode> typeSpecParser(){
   if(CurTok.type != VOID_TOK){
