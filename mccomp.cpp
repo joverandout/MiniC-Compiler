@@ -480,6 +480,25 @@ public:
   }
 };
 
+class ifASTnode : public ASTnode{
+  std::unique_ptr<ASTnode> expr;
+  std::unique_ptr<BlockASTnode> block;
+  std::unique_ptr<BlockASTnode> elseBlock;
+
+public:
+  ifASTnode(std::unique_ptr<ASTnode> Expr, std::unique_ptr<BlockASTnode> Block, std::unique_ptr<BlockASTnode> ElseBlock) : expr(std::move(Expr)), block(std::move(Block)), elseBlock(std::move(ElseBlock)) {}
+  virtual Value *codegen() override;
+  virtual std::string to_string() const override {
+    std::string stringy = "\nIF STATEMENT:\n";
+    stringy = stringy +   "\nCONDITION:    " + expr->to_string();
+    stringy = stringy +   "\nBLOCK:        " + block->to_string();
+    if(elseBlock){
+      stringy = stringy + "\nELSE BLOCK:   " + elseBlock->to_string();
+    }
+    return stringy;
+  };
+};
+
 /* add other AST nodes as nessasary */
 
 //===----------------------------------------------------------------------===//
@@ -1068,6 +1087,20 @@ static std::unique_ptr<BlockASTnode> elseParser(){
   }
   
   return nullptr;
+}
+
+static std::unique_ptr<ifASTnode> ifParser(){
+  if(CurTok.type != IF){
+    line();printf("ERROR: Expected 'IF'");
+    errorMessage();
+    return nullptr;
+  }
+  else{
+    getNextToken();
+    if(CurTok.type == LPAR){
+      
+    }
+  }
 }
 
 static std::unique_ptr<typeASTnode> typeSpecParser(){
