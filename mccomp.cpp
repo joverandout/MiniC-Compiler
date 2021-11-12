@@ -1168,9 +1168,11 @@ int main(int argc, char **argv) {
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
   fprintf(stderr, "Lexer Finished\n");
+  
 
   // Make the module, which holds all the code.
   TheModule = std::make_unique<Module>("mini-c", TheContext);
+
 
   // Run the parser now.
   parser();
