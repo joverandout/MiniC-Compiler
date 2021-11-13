@@ -1297,6 +1297,33 @@ static void functionDeclarationParser(){
   //CALL BLOCK
 }
 
+static std::unique_ptr<parameterASTnode> paramParser(){
+  auto variableType = vartypeParser();
+  if(CurTok.type == IDENT){
+    auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+    getNextToken();
+    if(CurTok.type != RPAR && CurTok.type != COMMA){
+      line();printf("ERROR: Expected COMMA ',' OR RPAR ')' instead encountered %s", CurTok.lexeme.c_str());
+      errorMessage();
+      return nullptr;
+    }
+    getNextToken();
+    return std::make_unique<parameterASTnode>(std::move(variableType), std::move(identifier));
+  }
+  else{
+    line();printf("ERROR: Missing IDENT, %s is not of type IDENT", CurTok.lexeme.c_str());
+    errorMessage();
+    auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+    if(CurTok.type != RPAR && CurTok.type != COMMA){
+      line();printf("ERROR: Expected COMMA ',' OR RPAR ')' instead encountered %s", CurTok.lexeme.c_str());
+      errorMessage();
+      return nullptr;
+    }
+    getNextToken();
+    return std::make_unique<parameterASTnode>(std::move(variableType), std::move(identifier));
+  }
+}
+
 // program ::= extern_list decl_list
 static void parser() {
   // add body
@@ -1347,7 +1374,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    auto blank = vartypeParser();
+    auto blank = paramParser();
   }
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
