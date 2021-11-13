@@ -499,6 +499,41 @@ public:
   }
 };
 
+class identASTnode : public ASTnode {
+  TOKEN token;
+  std::string value;
+
+public:
+  identASTnode(TOKEN Token, std::string Value) : token(Token), value(Value) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override{
+    return value;
+  }
+};
+
+class parameterASTnode : public ASTnode {
+  std::unique_ptr<typeASTnode> type;
+  std::unique_ptr<identASTnode> identifier;
+public:
+  parameterASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Identifier) : type(std::move(Type)), identifier(std::move(Identifier)) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override {
+    std::string stringy = "";
+    stringy = stringy + "VARIABLE: \n";
+    stringy = stringy + "TYPE:     "  + type->to_string();
+    stringy = stringy + "\nNAME:     " + identifier->to_string();
+    return stringy;
+  }
+
+  int getType(){
+    return type->getType();
+  }
+
+  std::string getName(){
+    return identifier->to_string();
+  }
+};
+
 class whileASTnode : public ASTnode{
   std::unique_ptr<ASTnode> expr;
   std::unique_ptr<ASTnode> stmt;
@@ -532,7 +567,7 @@ static void line(){
 }
 
 static void errorMessage(){
-  printf("TOKEN: Unexpected Token, %s, Encountered.\nLOCATION: '%s' was found at Row,Column [%d,%d] \n", CurTok.lexeme.c_str(), CurTok.lexeme.c_str(), CurTok.lineNo, CurTok.columnNo);
+  printf("TOKEN: Unexpected Token, %s, encountered.\nLOCATION: '%s' was found at Row,Column [%d,%d] \n", CurTok.lexeme.c_str(), CurTok.lexeme.c_str(), CurTok.lineNo, CurTok.columnNo);
 }
 
 static std::unique_ptr<ASTnode> expressionParser();
@@ -1205,6 +1240,19 @@ static std::unique_ptr<whileASTnode> whileParser(){
   return nullptr;
 }
 
+static std::unique_ptr<typeASTnode> vartypeParser(){
+  if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
+    TOKEN storage = CurTok;
+    getNextToken();
+    return std::make_unique<typeASTnode>(storage);
+  }
+  else{
+    line();printf("ERROR: invalid variable declaration. %s encountered when 'int' 'bool' or 'float' expected\n", CurTok.lexeme.c_str());
+    errorMessage();
+    getNextToken();
+    return nullptr;
+  }
+}
 
 static std::unique_ptr<typeASTnode> typeSpecParser(){
   if(CurTok.type != VOID_TOK){
@@ -1299,7 +1347,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    auto blank = statementListParser();
+    auto blank = vartypeParser();
   }
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
