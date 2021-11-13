@@ -576,6 +576,7 @@ static void subExprParser();
 static std::unique_ptr<ifASTnode> ifParser();
 static std::unique_ptr<whileASTnode> whileParser();
 static std::unique_ptr<BlockASTnode> blockParser();
+static std::unique_ptr<parameterASTnode> paramParser();
 
 
 
@@ -1001,6 +1002,92 @@ static std::unique_ptr<ASTnode> statementParser(){
   return nullptr;
 }
 
+static std::vector<std::unique_ptr<parameterASTnode>> parameterlistPrimeParser(){
+  std::vector<std::unique_ptr<parameterASTnode>> parameters;
+  std::vector<std::unique_ptr<parameterASTnode>> vector;
+  if(CurTok.type != COMMA) {
+    if(CurTok.type != RPAR){
+      line();printf("ERROR: Missing COMMA ','\n");
+      errorMessage();
+      return vector;
+    }
+  }
+  if(CurTok.type == COMMA){
+    getNextToken();
+    printf("CURR %s\n", CurTok.lexeme.c_str());
+    auto parameter = paramParser();
+    printf("CURR %s\n", CurTok.lexeme.c_str());
+    auto paramPrimeList = parameterlistPrimeParser();
+
+    if(parameter){
+      parameters.push_back(std::move(parameter));
+    }
+    int size = (int)paramPrimeList.size();
+    for (size_t i = 0; i < size; i++)
+    {
+      parameters.push_back(std::move(paramPrimeList[i]));
+    }
+    
+    if(CurTok.type == RPAR){
+      return parameters;
+    }
+    else{
+      line();printf("ERROR: Missing RajghPAR ')'\n");
+      errorMessage();
+      return vector;
+    }
+    return parameters;
+  }
+  return vector;
+}
+
+static std::vector<std::unique_ptr<parameterASTnode>> parameterListParser(){
+  std::vector<std::unique_ptr<parameterASTnode>> parameters;
+  std::vector<std::unique_ptr<parameterASTnode>> vector;
+  if(CurTok.type == EOF_TOK) return vector;
+  if(CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK){
+    line();printf("ERROR: Variable has no type, expected type before variable declaration\n");
+    errorMessage();
+    return vector;
+  }
+
+  auto parameter = paramParser();
+  printf("CURRRR %s\n", CurTok.lexeme.c_str());
+  auto parameterPrimes = parameterlistPrimeParser();
+
+  if(parameter){
+    parameters.push_back(std::move(parameter));
+  }
+  int size = (int) parameterPrimes.size();
+  for (int i = 0; i < size; i++)
+  {
+    parameters.push_back(std::move(parameterPrimes[i]));
+  }
+  if(CurTok.type == RPAR){
+      return parameters;
+  }
+  else{
+      line();printf("ERROR: Missing RPAR ')'\n");
+      errorMessage();
+      return vector;
+    }
+  return parameters;
+}
+
+static std::unique_ptr<typeASTnode> vartypeParser(){
+  if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
+    TOKEN storage = CurTok;
+    getNextToken();
+    return std::make_unique<typeASTnode>(storage);
+  }
+  else{
+    line();printf("ERROR: invalid variable declaration. %s encountered when 'int' 'bool' or 'float' expected\n", CurTok.lexeme.c_str());
+    errorMessage();
+    getNextToken();
+    return nullptr;
+  }
+}
+
 static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
   std::vector<std::unique_ptr<ASTnode>> statements;
   std::vector<std::unique_ptr<ASTnode>> listOfStatements;
@@ -1025,51 +1112,13 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
   return statements;
 }
 
-static std::unique_ptr<typeASTnode> variableTypeParser(){
-  if(CurTok.type != INT_TOK || CurTok.type != BOOL_TOK || CurTok.type != FLOAT_TOK){
-    line();printf("ERROR: Missing variable type, expected either INT, BOOL or FLOAT\n");
-    errorMessage();
-  }
-  if(CurTok.type == INT_TOK){
-    if(CurTok.type == INT_TOK){
-      TOKEN returnTok = CurTok;
-      getNextToken();
-      return std::make_unique<typeASTnode>(returnTok);
-    }
-    line();printf("ERROR: %s does not match expected type INT\n", CurTok.lexeme.c_str());
-    errorMessage();
-    getNextToken();
-  }
-  if(CurTok.type == BOOL_LIT){
-    if(CurTok.type == BOOL_LIT){
-      TOKEN returnTok = CurTok;
-      getNextToken();
-      return std::make_unique<typeASTnode>(returnTok);
-    }
-    line();printf("ERROR: %s does not match expected type BOOL\n", CurTok.lexeme.c_str());
-    errorMessage();
-    getNextToken();
-  }
-  if(CurTok.type == FLOAT_TOK){
-    if(CurTok.type == FLOAT_TOK){
-      TOKEN returnTok = CurTok;
-      getNextToken();
-      return std::make_unique<typeASTnode>(returnTok);
-    }
-    line();printf("ERROR: %s does not match expected type FLOAT\n", CurTok.lexeme.c_str());
-    errorMessage();
-    getNextToken();
-  }
-  return nullptr;
-}
-
 static std::unique_ptr<ASTnode> localDeclParser(){
   if(!(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK)){
     line();printf("ERROR: Locally declared variable has no type\n");
     errorMessage();
   }
   else{
-    auto variableType = variableTypeParser();
+    auto variableType = vartypeParser();
     if(CurTok.type == IDENT){
       getNextToken();
       if(CurTok.type == SC){
@@ -1240,24 +1289,12 @@ static std::unique_ptr<whileASTnode> whileParser(){
   return nullptr;
 }
 
-static std::unique_ptr<typeASTnode> vartypeParser(){
-  if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
-    TOKEN storage = CurTok;
-    getNextToken();
-    return std::make_unique<typeASTnode>(storage);
-  }
-  else{
-    line();printf("ERROR: invalid variable declaration. %s encountered when 'int' 'bool' or 'float' expected\n", CurTok.lexeme.c_str());
-    errorMessage();
-    getNextToken();
-    return nullptr;
-  }
-}
+
 
 static std::unique_ptr<typeASTnode> typeSpecParser(){
   if(CurTok.type != VOID_TOK){
     if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK){
-      return variableTypeParser();
+      return vartypeParser();
     }
     line();printf("ERROR: Missing a declaration type\n");
     return nullptr;
@@ -1296,8 +1333,10 @@ static void functionDeclarationParser(){
   getNextToken();
   //CALL BLOCK
 }
-
 static std::unique_ptr<parameterASTnode> paramParser(){
+  // if(CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK){
+    
+  // }
   auto variableType = vartypeParser();
   if(CurTok.type == IDENT){
     auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
@@ -1307,7 +1346,6 @@ static std::unique_ptr<parameterASTnode> paramParser(){
       errorMessage();
       return nullptr;
     }
-    getNextToken();
     return std::make_unique<parameterASTnode>(std::move(variableType), std::move(identifier));
   }
   else{
@@ -1319,7 +1357,6 @@ static std::unique_ptr<parameterASTnode> paramParser(){
       errorMessage();
       return nullptr;
     }
-    getNextToken();
     return std::make_unique<parameterASTnode>(std::move(variableType), std::move(identifier));
   }
 }
@@ -1374,7 +1411,8 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    auto blank = paramParser();
+    auto blank = parameterListParser();
+    getNextToken();
   }
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
