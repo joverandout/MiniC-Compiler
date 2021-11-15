@@ -552,6 +552,35 @@ public:
   }
 };
 
+class externASTnode : public ASTnode {
+  std::unique_ptr<typeASTnode> type;
+  std::unique_ptr<identASTnode> identifer;
+  std::vector<std::unique_ptr<parameterASTnode>> parameters;
+public:
+  externASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Identifier, std::vector<std::unique_ptr<parameterASTnode>> Parameters)
+  : type(std::move(Type)), identifer(std::move(Identifier)), parameters(std::move(Parameters)) {}
+  virtual Value *codegen() override{};
+
+  int getType() {
+    return type->getType();
+  }
+  std::string getName(){
+    return identifer->to_string();
+  }
+  std::string to_string() const override(){
+    std::string stringy = "\nFUNCTION: \n";
+    stringy = stringy +   "NAME:      " + getName();
+    stringy = stringy + "\nTYPE:      " + type->to_string();
+    stringy = stringy + "\nPARAMTERS: ";
+    for (size_t i = 0; i < parameters.size(); i++)
+    {
+      stringy = stringy + parameters.at(i)->to_string().c_str();
+      if(i < parameters.size()-1) stringy = stringy + "\n           ";
+    }
+    return stringy;
+  }
+};
+
 class whileASTnode : public ASTnode{
   std::unique_ptr<ASTnode> expr;
   std::unique_ptr<ASTnode> stmt;
@@ -568,6 +597,8 @@ public:
     return stringy;
   }
 };
+
+
 
 /* add other AST nodes as nessasary */
 
@@ -1497,6 +1528,82 @@ static std::unique_ptr<ASTnode> declParser(){
   }
   return nullptr;
 }
+
+
+static std::vector<std::unique_ptr<ASTnode>> EOFparser(){
+  if(CurTok.type != EOF_TOK){
+    line();printf("ERROR: expected end of file after the declarations\n");
+    errorMessage();
+    std::vector<std::unique_ptr<ASTnode>> nullReturner;
+    return nullReturner;
+  }
+}
+
+static std::vector<std::unique_ptr<ASTnode>> declPrimeParser(){
+  std::vector<std::unique_ptr<ASTnode>> declarations;
+  if(CurTok.type == EOF){
+    std::vector<std::unique_ptr<ASTnode>> nullReturner;
+    return nullReturner;
+  }
+  else if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK){
+    auto declaration = declParser();
+    auto declarationPrime = declPrimeParser();
+
+    if(declaration){
+      declarations.push_back(std::move(declaration));
+    }
+    int size = (int) declarationPrime.size();
+    for (size_t i = 0; i < size; i++)
+    {
+      declarations.push_back(std::move(declarationPrime[i]));
+    }
+  }
+  
+  if(CurTok.type == EOF){
+    return declarations;
+  }
+  return EOFparser();
+}
+
+
+static std::vector<std::unique_ptr<ASTnode>> declListParser(){
+  if(CurTok.type!= INT_TOK && CurTok.type != BOOL_TOK && CurTok.type != FLOAT_TOK && CurTok.type != VOID_TOK){
+    line();printf("ERROR: Missing type in delcaration expected one of 'INT', 'BOOL', 'FLOAT' and 'VOID'");
+    errorMessage();
+    std::vector<std::unique_ptr<ASTnode>> null;
+    return null;
+  }
+  auto declaration = declParser();
+  auto declarationPrime = declPrimeParser();
+
+  std::vector<std::unique_ptr<ASTnode>> declarations;
+
+  if(declaration){
+    declarations.push_back(std::move(declaration));
+  }
+  int size = (int) declarationPrime.size();
+  for (size_t i = 0; i < size; i++)
+  {
+    declarations.push_back(std::move(declarationPrime[i]));
+  }
+  if(CurTok.type == EOF){
+    return declarations;
+  }
+  return EOFparser();
+}
+
+static std::unique_ptr<externASTnode> externParser(){
+  if(CurTok.type == EXTERN){
+
+  }
+  else{
+    line();printf("ERROR: Missing 'extern'\n");
+    errorMessage();
+    return nullptr;
+  }
+}
+
+
 
 // program ::= extern_list decl_list
 static void parser() {
