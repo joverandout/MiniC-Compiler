@@ -1639,6 +1639,57 @@ static std::unique_ptr<externASTnode> externParser(){
   return nullptr;
 }
 
+static std::vector<std::unique_ptr<externASTnode>> externListPrimeParser(){
+  std::vector<std::unique_ptr<externASTnode>> externListPrime;
+  std::vector<std::unique_ptr<externASTnode>> returner;
+  
+  if(CurTok.type != EXTERN && CurTok.type != VOID_TOK && CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK)
+  {
+    line();printf("ERROR: Missing 'extern' or a type - INT FLOAT BOOL or VOID\n");
+    errorMessage();
+    return returner;
+  }
+
+  if(CurTok.type == EXTERN){
+    auto externN = externParser();
+    auto externPrimeE = externListPrimeParser();
+
+    if(externN){
+      externListPrime.push_back(std::move(externN));
+    }
+    int size = externListPrime.size();
+    for (size_t i = 0; i < size; i++)
+    {
+      externListPrime.push_back(std::move(externPrimeE.at(i)));
+    }
+    if(CurTok.type != VOID_TOK && CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK){
+      line();printf("ERROR: Missing type - INT FLOAT BOOL or VOID\n");
+      errorMessage();
+      return returner;
+    }
+    return externListPrime;
+  }
+
+  return returner;
+}
+
+
+static std::vector<std::unique_ptr<externASTnode>> externListParser(){
+  std::vector<std::unique_ptr<externASTnode>> externList;
+  auto externType = externParser();
+  if(externType){
+    externList.push_back(std::move(externType));
+    auto externListPrime = externListPrimeParser();
+    int size = (int) externListPrime.size();
+    for (size_t i = 0; i < size; i++)
+    {
+      externList.push_back(std::move(externListPrime.at(i)));
+    }
+    
+  }
+  return externList;
+}
+
 
 
 // program ::= extern_list decl_list
