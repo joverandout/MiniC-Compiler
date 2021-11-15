@@ -1184,6 +1184,26 @@ static std::unique_ptr<ASTnode> localDeclParser(){
   return nullptr;
 }
 
+static std::vector<std::unique_ptr<parameterASTnode>> paramsParser(){
+  std::vector<std::unique_ptr<parameterASTnode>> parameters;
+  if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK){
+    return parameterListParser();
+  }
+  if(CurTok.type == VOID_TOK){
+    auto voidD = std::make_unique<typeASTnode>(CurTok);
+    auto parameter = std::make_unique<parameterASTnode>(std::move(voidD), nullptr);
+    parameters.push_back(std::move(parameter));
+    getNextToken();
+    return parameters;
+  }
+  if(CurTok.type != RPAR){
+    line();printf("ERROR: Parameter has no type, expected either 'INT', 'BOOL', 'FLOAT', or 'VOID'");
+    errorMessage();
+  }
+  
+  return parameters;
+}
+
 static std::vector<std::unique_ptr<ASTnode>> localDeclsParser(){
   std::vector<std::unique_ptr<ASTnode>> declarations;
   if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
@@ -1358,6 +1378,36 @@ static std::unique_ptr<typeASTnode> typeSpecParser(){
   return nullptr;
 }
 
+static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
+  if(CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK){
+    line();printf("ERROR: No type in variable declartion, needed INT BOOL or FLOAT\n");
+    errorMessage();
+    return nullptr;
+  }
+  auto type = vartypeParser();
+  auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+  if(CurTok.type == IDENT){
+    getNextToken();
+  }
+  else{
+    line();printf("ERROR: Missing Identifier\n");
+    errorMessage();
+  }
+  if(CurTok.type == SC){
+    getNextToken();
+  }
+  else{
+    line();printf("ERROR: Missing SC ';' after identifier\n");
+    errorMessage();
+  }
+  if(CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK && CurTok.type != VOID_TOK && CurTok.type != EOF){
+    line();printf("ERROR: Expected a new declaration (INT BOOL FLOAT OR VOID) or an EOF\n");
+    errorMessage();
+    return nullptr;
+  }
+  return std::make_unique<parameterASTnode>(std::move(type), std::move(ident));
+}
+
 static void functionDeclarationParser(){
   auto typeSpec = typeSpecParser();
   if(CurTok.type != IDENT){
@@ -1377,7 +1427,7 @@ static void functionDeclarationParser(){
   else{
     getNextToken();
   }
-  //auto parameters = nullptr; //TODO
+  auto parameters = paramsParser();
   if(CurTok.type != RPAR){
     line();printf("ERROR: Missing or incorrect placement of RPAR ')'\n");
     errorMessage();
@@ -1414,6 +1464,38 @@ static std::unique_ptr<parameterASTnode> paramParser(){
     }
     return std::make_unique<parameterASTnode>(std::move(variableType), std::move(identifier));
   }
+}
+
+static std::unique_ptr<ASTnode> declParser(){
+  if(CurTok.type!= INT_TOK && CurTok.type != BOOL_TOK && CurTok.type != FLOAT_TOK && CurTok.type != VOID_TOK){
+    line();printf("ERROR: Missing type in delcaration expected one of 'INT', 'BOOL', 'FLOAT' and 'VOID'");
+    errorMessage();
+  }
+  switch (CurTok.type)
+  {
+  case VOID_TOK:
+    /*auto function =*/ functionDeclarationParser(); //TODO
+    break;
+  default:
+    TOKEN one = CurTok;
+    getNextToken();
+    TOKEN two = CurTok;
+    getNextToken();
+    TOKEN sc = CurTok;
+    putBackToken(two);
+    putBackToken(one);
+    CurTok = one;
+    if(sc.type == SC){
+      auto variableDeclaration = nullptr;
+      return variableDeclaration;
+    }
+    else{
+      /*auto functionDeclaration */functionDeclarationParser(); //TODO
+      return nullptr;
+    }
+    break;
+  }
+  return nullptr;
 }
 
 // program ::= extern_list decl_list
