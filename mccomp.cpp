@@ -423,7 +423,7 @@ public:
   typeASTnode(TOKEN t) : token(t){}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override{
-    std::string returner = "Value or Function type: '";
+    std::string returner = "\nValue or Function type: '";
     switch (token.type)
     {
     case INT_TOK:
@@ -441,6 +441,7 @@ public:
     default:
       break;
     }
+    returner = returner + "\n";
     return returner;
   };
 
@@ -448,6 +449,23 @@ public:
     return token.type;
   }
 
+};
+
+class returnASTnode : public ASTnode {
+  std::unique_ptr<ASTnode> expression;
+  std::unique_ptr<ASTnode> semiColon;
+public:
+  returnASTnode(std::unique_ptr<ASTnode> Expression) : expression(std::move(Expression)){}
+  returnASTnode(){}
+
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override {
+    std::string stringy = "\nReturn Statement:\n";
+    if(expression){
+      stringy = stringy + "Expression:    " + expression->to_string().c_str() + "\n";
+    }
+    return stringy;
+  }
 };
 
 
@@ -460,7 +478,7 @@ public:
   declarations(std::move(newDeclarations)), statements(std::move(newStatements)){}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    std::string tostring = "BLOCK: \n";
+    std::string tostring = "\nBLOCK: \n";
     if(declarations.size() >= 1){
       tostring = tostring + "   -> Declarations of local variables: \n";
       for (size_t i = 0; i < declarations.size(); i++)
@@ -969,6 +987,35 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
   return nullptr;
 }
 
+static std::unique_ptr<returnASTnode> returnStatementParser(){
+  if(CurTok.type == RETURN){
+      getNextToken();
+      if(CurTok.type == SC){
+        auto returner = std::make_unique<returnASTnode>();
+        getNextToken();
+        return returner;
+      }
+      else if(CurTok.type == INT_LIT || CurTok.type == FLOAT_LIT || CurTok.type == BOOL_LIT || CurTok.type == NOT || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == MINUS){
+        auto expression = expressionParser();
+        if(CurTok.type == SC){
+          auto returner = std::make_unique<returnASTnode>(std::move(expression));
+          getNextToken();
+          return returner;
+        }
+      }
+      else{
+        line();printf("ERROR: Missing semicolon ';' after expression in RETURN statement\n");
+        errorMessage();
+      }
+  }
+  else{
+    line();printf("ERROR: Missing 'RETURN' before statement\n");
+    errorMessage();
+    return nullptr;
+  }
+  return nullptr;
+}
+
 
 static std::unique_ptr<ASTnode> statementParser(){
   if(CurTok.type == IF){ //call if;
@@ -1014,9 +1061,7 @@ static std::vector<std::unique_ptr<parameterASTnode>> parameterlistPrimeParser()
   }
   if(CurTok.type == COMMA){
     getNextToken();
-    printf("CURR %s\n", CurTok.lexeme.c_str());
     auto parameter = paramParser();
-    printf("CURR %s\n", CurTok.lexeme.c_str());
     auto paramPrimeList = parameterlistPrimeParser();
 
     if(parameter){
@@ -1052,7 +1097,6 @@ static std::vector<std::unique_ptr<parameterASTnode>> parameterListParser(){
   }
 
   auto parameter = paramParser();
-  printf("CURRRR %s\n", CurTok.lexeme.c_str());
   auto parameterPrimes = parameterlistPrimeParser();
 
   if(parameter){
@@ -1411,7 +1455,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    auto blank = parameterListParser();
+    auto blank = returnStatementParser();
     getNextToken();
   }
   if(errorCount > 0) printf("============================\n");
