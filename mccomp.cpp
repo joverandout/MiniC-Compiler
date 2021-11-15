@@ -559,7 +559,7 @@ class externASTnode : public ASTnode {
 public:
   externASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Identifier, std::vector<std::unique_ptr<parameterASTnode>> Parameters)
   : type(std::move(Type)), identifer(std::move(Identifier)), parameters(std::move(Parameters)) {}
-  virtual Value *codegen() override{};
+  virtual Value *codegen() override {};
 
   int getType() {
     return type->getType();
@@ -567,9 +567,10 @@ public:
   std::string getName(){
     return identifer->to_string();
   }
-  std::string to_string() const override(){
+
+  std::string to_string() const override {
     std::string stringy = "\nFUNCTION: \n";
-    stringy = stringy +   "NAME:      " + getName();
+    stringy = stringy +   "NAME:      " + identifer->to_string();
     stringy = stringy + "\nTYPE:      " + type->to_string();
     stringy = stringy + "\nPARAMTERS: ";
     for (size_t i = 0; i < parameters.size(); i++)
@@ -1594,13 +1595,48 @@ static std::vector<std::unique_ptr<ASTnode>> declListParser(){
 
 static std::unique_ptr<externASTnode> externParser(){
   if(CurTok.type == EXTERN){
-
+    getNextToken();
+    if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK || CurTok.type == VOID_TOK){
+      auto varType = std::make_unique<typeASTnode>(CurTok);
+      getNextToken();
+      if(CurTok.type == IDENT){
+        auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+        getNextToken();
+        if(CurTok.type!= LPAR){
+          line();printf("ERROR: Missing LPAR '(' for function\n");
+          errorMessage();
+        }
+        getNextToken();
+        auto parameters = paramsParser();
+        if(CurTok.type!= LPAR){
+          line();printf("ERROR: Missing RPAR ')' for function\n");
+          errorMessage();
+        }
+        getNextToken();
+        if(CurTok.type!= SC){
+          line();printf("ERROR: Missing SC ';' for function\n");
+          errorMessage();
+        }
+        auto returner = std::make_unique<externASTnode>(std::move(varType), std::move(ident), std::move(parameters));
+        getNextToken();
+        return std::move(returner);
+      }
+      else{
+        line();printf("ERROR: Missing IDENT for function\n");
+        errorMessage();
+      }
+    }
+    else{
+      line();printf("ERROR: Missing function type, expected either INT BOOL FLOAT or VOID ';' for function\n");
+      errorMessage();
+    }
   }
   else{
     line();printf("ERROR: Missing 'extern'\n");
     errorMessage();
     return nullptr;
   }
+  return nullptr;
 }
 
 
