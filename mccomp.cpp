@@ -1118,6 +1118,7 @@ static std::vector<std::unique_ptr<parameterASTnode>> parameterListParser(){
   return parameters;
 }
 
+
 static std::unique_ptr<typeASTnode> vartypeParser(){
   if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
     TOKEN storage = CurTok;
@@ -1358,25 +1359,35 @@ static std::unique_ptr<typeASTnode> typeSpecParser(){
 }
 
 static void functionDeclarationParser(){
-  auto nuller = typeSpecParser();
+  auto typeSpec = typeSpecParser();
   if(CurTok.type != IDENT){
     line();printf("ERROR: Expected an identifier\n");
     errorMessage();
+    auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
   }
-  getNextToken();
+  else{
+    auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+    getNextToken();
+
+  }
   if(CurTok.type != LPAR){
     line();printf("ERROR: Missing LPAR '('\n");
     errorMessage();
   }
-  getNextToken();
-  //CALL PARAMS
+  else{
+    getNextToken();
+  }
+  //auto parameters = nullptr; //TODO
   if(CurTok.type != RPAR){
-    line();printf("ERROR: Missing RPAR ')'\n");
+    line();printf("ERROR: Missing or incorrect placement of RPAR ')'\n");
     errorMessage();
   }
   getNextToken();
-  //CALL BLOCK
+  auto block = blockParser();
+  //TODO function astnode types
 }
+
+
 static std::unique_ptr<parameterASTnode> paramParser(){
   // if(CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK){
     
