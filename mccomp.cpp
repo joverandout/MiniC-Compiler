@@ -630,11 +630,11 @@ public:
   }
 };
 
-class programASTnode : public ASTnode{
-  std::vector<std::unique_ptr<externASTnode>> externList;
-  std::vector<std::unique_ptr<globalASTnode> globalList;
-  std::vector<std::unique_ptr<
-}
+// class programASTnode : public ASTnode{
+//   std::vector<std::unique_ptr<externASTnode>> externList;
+//   std::vector<std::unique_ptr<globalASTnode> globalList;
+//   std::vector<std::unique_ptr<
+// }
 
 
 
@@ -1732,26 +1732,10 @@ static std::vector<std::unique_ptr<externASTnode>> externListParser(){
   return externList;
 }
 
-static std::unique_ptr<globalASTnode> globalParser(){
-  TOKEN store = CurTok;
-  auto parameter = paramParser();
-  if(parameter == nullptr) return nullptr;
-  if(CurTok.type != SC){
-    line();printf("ERROR: Missing SC ';' after GLOBAL declaration\n");
-    errorMessage();
-    return nullptr;
-  }
-  auto typeGL = std::make_unique<typeASTnode>(parameter->getTokenOfType());
-  auto identGL = std::make_unique<identASTnode>(parameter->getTokenOfIdent(), parameter->getName());
-  auto globalNode = std::make_unique<globalASTnode>(std::move(typeGL), std::move(identGL));
-  getNextToken();
-  return globalNode;
-}
-
 static std::vector<std::unique_ptr<globalASTnode>>  globalsListParser(){
   std::vector<std::unique_ptr<globalASTnode>> globalList;
   if(CurTok.type == EOF || CurTok.type == EOF_TOK) return globalList;
-  auto global = globalParser();
+  auto global = declParser();
   auto globalListT = globalsListParser();
   if(global){
     globalList.push_back(std::move(global));
