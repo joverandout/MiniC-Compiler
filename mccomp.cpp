@@ -410,9 +410,49 @@ class IntASTnode : public ASTnode {
 
 public:
   IntASTnode(TOKEN tok, int val) : Val(val), Tok(tok) {}
-  virtual Value *codegen() override;
+  virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    return "a sting representation of this AST node";
+    return "\nINT:  "+ std::to_string(Val) + "\n";
+  }
+};
+
+class floatASTnode : public ASTnode {
+  float Val;
+  TOKEN Tok;
+  std::string Name;
+
+public:
+  floatASTnode(TOKEN tok, float val) : Val(val), Tok(tok) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override {
+    return "\FLOAT:  "+ std::to_string(Val) + "\n";
+  }
+};
+
+
+class boolASTnode : public ASTnode {
+  bool Val;
+  TOKEN Tok;
+  std::string Name;
+
+public:
+  boolASTnode(TOKEN tok, bool val) : Val(val), Tok(tok) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override {
+    return "\FLOAT:  "+ std::to_string(Val) + "\n";
+  }
+};
+
+class notAndNegativeASTnode : public ASTnode {
+  char prefix;
+  TOKEN token;
+  std::string name;
+  std::unique_ptr<ASTnode> expression;
+public:
+  notAndNegativeASTnode(char Prefix, TOKEN Token, std::unique_ptr<ASTnode> Expression) : prefix(Prefix), token(Token), expression(std::move(Expression)) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override {
+    return "\nPREFIX: " + std::string(1, prefix) + "\nNAME: " + name;
   }
 };
 
@@ -521,6 +561,7 @@ public:
   }
 };
 
+
 class identASTnode : public ASTnode {
   TOKEN token;
   std::string value;
@@ -563,6 +604,45 @@ public:
   }
 };
 
+class expressionASTnode : public ASTnode {
+  std::unique_ptr<ASTnode> left;
+  std::string operation;
+  std::unique_ptr<ASTnode> right;
+public:
+  expressionASTnode(std::unique_ptr<ASTnode> LEFT, TOKEN Operation, std::unique_ptr<ASTnode> RIGHT) 
+  : left(std::move(LEFT)), operation(Operation.lexeme), right(std::move(RIGHT)) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override {
+    std::string stringy = "\nEXPRESSION:\n";
+    stringy += "LHS: " + left->to_string();
+    stringy += "\nOperator: " + operation;
+    stringy += "\nRHS: " + right->to_string();
+    return stringy;
+  }
+};
+
+class functionCall : public ASTnode {
+  std::unique_ptr<ASTnode> name;
+  std::vector<std::unique_ptr<ASTnode>> arguments;
+  std::string caller;
+public:
+  functionCall(std::unique_ptr<ASTnode> Name, std::vector<std::unique_ptr<ASTnode>> Arguments, TOKEN token) : name(std::move(Name)), arguments(std::move(Arguments)), caller(token.lexeme.c_str()){}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override{
+    std::string stringy = "\nCALL:\n";
+    stringy = stringy +  "Name:      " + name->to_string() +"\n";
+    if(arguments.size() > 0){
+      stringy = stringy +"Arguments: " + arguments[0]->to_string();
+      for (size_t i = 1; i < arguments.size(); i++)
+      {
+        stringy += "\n           " + arguments[i]->to_string();
+      }
+      
+    }
+    return stringy;
+  }
+};
+
 class externASTnode : public ASTnode {
   std::unique_ptr<typeASTnode> type;
   std::unique_ptr<identASTnode> identifer;
@@ -589,6 +669,23 @@ public:
       stringy = stringy + parameters.at(i)->to_string().c_str();
       if(i < parameters.size()-1) stringy = stringy + "\n           ";
     }
+    return stringy;
+  }
+};
+
+
+class functionASTnode : public ASTnode{
+  std::unique_ptr<externASTnode> function;
+  std::unique_ptr<ASTnode> funcBody;
+public:
+  functionASTnode(std::unique_ptr<externASTnode> Function, std::unique_ptr<ASTnode> FuncBody) : function(std::move(Function)), funcBody(std::move(FuncBody)) {}
+  virtual Function *codegen() override;
+
+  virtual std::string to_string() const override{
+    std::string stringy = "\nFUNCTION:\n";
+    stringy = stringy + function->to_string();
+    stringy += "\nBODY:     ";
+    if(funcBody) {stringy = stringy + funcBody->to_string().c_str();}
     return stringy;
   }
 };
@@ -677,7 +774,7 @@ static void errorMessage(){
 }
 
 static std::unique_ptr<ASTnode> expressionParser();
-static void subExprParser();
+static std::unique_ptr<ASTnode> subExprParser();
 
 static std::unique_ptr<ifASTnode> ifParser();
 static std::unique_ptr<whileASTnode> whileParser();
@@ -775,79 +872,82 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListParser(){
   return stdList;
 }
 
-static void leftParanthesis(TOKEN identifier){
-  //auto identifierAuto = std::make_unique<IdentASTnode>(identifier);
+static std::unique_ptr<functionCall> leftParanthesis(TOKEN identifier){
+  auto ident = std::make_unique<identASTnode>(identifier, identifier.lexeme);
   getNextToken();
-  /*auto argumentLIst = */auto temp = ArgsListParser();
+  auto temp = ArgsListParser();
   getNextToken();
-  //return something here
+  return std::make_unique<functionCall>(std::move(ident), std::move(temp), identifier);
 }
 
 
-static void ElementParser(){
-  //printf("TOKEN = %s  &d\n", CurTok.lexeme.c_str(), CurTok.type);
+static std::unique_ptr<ASTnode> ElementParser(){
   if(CurTok.type == INT_LIT){
-    //auto Result = std::make_unique<IntASTnode>(CurTok, IntVal);
+    auto returner = std::make_unique<IntASTnode>(CurTok, IntVal);
+    auto inty = std::move(returner);
     getNextToken();
-    //auto inty = std::move(Result);
-    //if(inty) return inty;
+    if(inty) return inty;
   }
   else if(CurTok.type == FLOAT_LIT){
-    //auto Result = std::make_unique<IntASTnode>(CurTok, FloatVal);
+    auto returner = std::make_unique<floatASTnode>(CurTok, FloatVal);
+    auto floaty = std::move(returner);
     getNextToken();
-    //auto floaty = std::move(Result);
-    //if(floaty) return floaty;
+    if(floaty) return floaty;
   }
   else if(CurTok.type == BOOL_LIT){
-    //auto Result = std::make_unique<IntASTnode>(CurTok, BoolVal);
+    auto returner = std::make_unique<boolASTnode>(CurTok, BoolVal);
+    auto booly = std::move(returner);
     getNextToken();
-    //auto booly = std::move(Result);
-    //if(booly) return booly;
+    if(booly) return booly;
   }
   else if(CurTok.type == MINUS){
     char oper = '-';
     TOKEN negativeToken = CurTok;
     getNextToken();
-    /*auto expression =*/ ElementParser();
+    auto element = ElementParser();
     auto newResult = nullptr;
-    //if(expression){
-      //auto Result = std::make_unique<NegativeASTnode>(negativeToken, oper, std::move(expression));
-      //auto newResult = std::move(Result);
-    //}
-    //if(newResult) return newResult;
+    if(element){
+      auto neg = std::make_unique<notAndNegativeASTnode>(oper, negativeToken, std::move(element));
+      return std::move(neg);
+    }
+    if(newResult) return newResult;
   }
   else if(CurTok.type == NOT){
     char oper = '!';
     TOKEN notToken = CurTok;
     getNextToken();
-    /*auto expression =*/ ElementParser();
+    auto element = ElementParser();
     auto newResult = nullptr;
-    //if(expression){
-      //auto Result = std::make_unique<NegativeASTnode>(notToken, oper, std::move(expression));
-      //auto newResult = std::move(Result);
-    //}
-    //if(newResult) return newResult;
+    if(element){
+      auto neg = std::make_unique<notAndNegativeASTnode>(oper, notToken, std::move(element));
+      return std::move(neg);
+    }
+    if(newResult) return newResult;
   }
   else if(CurTok.type == IDENT){
     TOKEN identifier = CurTok;
     getNextToken();
     if(CurTok.type == LPAR) {
-      leftParanthesis(identifier);
+      auto lpar = leftParanthesis(identifier);
+      return std::move(lpar);
     }
     else{
       putBackToken(CurTok);
       putBackToken(identifier);
       getNextToken();
-      //auto Result = std::make_unique<IdentASTnode>(CurTok);
+      auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
       getNextToken();
-      //if(std::move(Result)) return std::move(Result)
+      if(std::move(ident)) return std::move(ident);
     }
   }
   else if(CurTok.type == LPAR){
     getNextToken();
-    expressionParser(); 
+    auto expression = expressionParser(); 
     getNextToken();
-    //if(expression exists etc get next token)
+    if(expression != nullptr){
+      getNextToken();
+      return std::move(expression);
+    }
   }
   else{
     line();
@@ -858,15 +958,20 @@ static void ElementParser(){
 }
 
 
-static void factorParser(){
+static std::unique_ptr<ASTnode> factorParser(){
   if(curTokType(CurTok)){
-    ElementParser();
+    auto element = ElementParser();
     int t = CurTok.type;
-    TOKEN op = CurTok;
-    if((t==ASTERIX) || (t==DIV) || (t==MOD)) { //FIRST(rval6')
-        //rval6 = rval7 rval6'
+    TOKEN ooperator = CurTok;
+    if((t==ASTERIX) || (t==DIV) || (t==MOD)) {
       getNextToken();
-      factorParser();
+      auto factor = factorParser();
+      if(factor != nullptr && element != nullptr){
+        return std::move(std::make_unique<expressionASTnode>(std::move(element), ooperator, std::move(factor)));
+      }
+    }
+    else{
+      if(element) return element;
     }
   }
   else{
@@ -878,64 +983,89 @@ static void factorParser(){
   
 }
 
-static void plusOrMinus(){
+static std::unique_ptr<ASTnode> plusOrMinus(){
   getNextToken();
-  subExprParser();
+  return subExprParser();
 }
 
-static void subExprParser(){
+static std::unique_ptr<ASTnode> subExprParser(){
   if(curTokType(CurTok)){
-    factorParser();
-    switch (CurTok.type)
-    {
-    case PLUS:
-      plusOrMinus();
-      break;
-    case MINUS:
-      plusOrMinus();
-      break;
-    default:
-      return;
-      break;
+    auto facotr = factorParser();
+    TOKEN operatfor = CurTok;
+    if(CurTok.type == PLUS){
+      auto operand = plusOrMinus();
+      if(facotr != nullptr){
+        if(operand != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(facotr), operatfor, std::move(operand)));
+        }
+      }
     }
+    if(CurTok.type ==  MINUS){
+      auto operand = plusOrMinus();
+      if(facotr != nullptr){
+        if(operand != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(facotr), operatfor, std::move(operand)));
+        }
+      }
+    }
+    if (facotr) return facotr;
   }
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
     getNextToken();
   }
+  return nullptr;
 }
 
-static void relationalParser(){
+static std::unique_ptr<ASTnode> relationalParser(){
   if(curTokType(CurTok)){
-    subExprParser();
-    switch (CurTok.type)
-    {
-    case LE:
+    auto sub = subExprParser();
+    TOKEN comp = CurTok;
+    if(CurTok.type == LE){
       getNextToken();
-      relationalParser();
-      break;
-    case LT:
-      getNextToken();
-      relationalParser();
-      break;
-    case GE:
-      getNextToken();
-      relationalParser();
-      break;
-    case GT:
-      getNextToken();
-      relationalParser();
-      break;
-    default:
-      return;
-      break;
+      auto rel = relationalParser();
+      if(sub != nullptr){
+        if(rel != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
+        }
+      }
     }
+    else if(CurTok.type == LT){
+      getNextToken();
+      auto rel = relationalParser();
+      if(sub != nullptr){
+        if(rel != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
+        }
+      }
+    }
+    else if(CurTok.type == GT){
+      getNextToken();
+      auto rel = relationalParser();
+      if(sub != nullptr){
+        if(rel != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
+        }
+      }
+    }
+    else if(CurTok.type == GE){
+      getNextToken();
+      auto rel = relationalParser();
+      if(sub != nullptr){
+        if(rel != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
+        }
+      }
+    }
+   else{
+     if(sub != nullptr) return sub;
+   }
   }
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
-    getNextToken();
+    return nullptr;
   }
 }
 
@@ -1053,7 +1183,7 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
     }
   }
   else{
-    /*auto x = */ expressionParser();
+    auto ex = expressionParser();
     if(CurTok.type == SC){
       //printf("%s - %d\n", CurTok.lexeme.c_str(), CurTok.type);
       getNextToken();
@@ -1071,6 +1201,7 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
       errorMessage();  
       getNextToken(); 
     }
+    return ex;
   }
   return nullptr;
 }
