@@ -626,8 +626,17 @@ public:
   virtual std::string to_string() const override{
     std::string stringy = "\nGLOBAL:\n";
     stringy += "Parameters: " + type->to_string() + "-" + ident->to_string() + "\n";
+    return stringy;
   }
 };
+
+class programASTnode : public ASTnode{
+  std::vector<std::unique_ptr<externASTnode>> externList;
+  std::vector<std::unique_ptr<globalASTnode> globalList;
+  std::vector<std::unique_ptr<
+}
+
+
 
 
 
@@ -1598,6 +1607,10 @@ static std::vector<std::unique_ptr<ASTnode>> declPrimeParser(){
 
 
 static std::vector<std::unique_ptr<ASTnode>> declListParser(){
+  std::vector<std::unique_ptr<ASTnode>> declarations;
+
+  if(CurTok.type == EOF || CurTok.type == EOF_TOK) return declarations;
+
   if(CurTok.type!= INT_TOK && CurTok.type != BOOL_TOK && CurTok.type != FLOAT_TOK && CurTok.type != VOID_TOK){
     line();printf("ERROR: Missing type in delcaration expected one of 'INT', 'BOOL', 'FLOAT' and 'VOID'");
     errorMessage();
@@ -1607,7 +1620,6 @@ static std::vector<std::unique_ptr<ASTnode>> declListParser(){
   auto declaration = declParser();
   auto declarationPrime = declPrimeParser();
 
-  std::vector<std::unique_ptr<ASTnode>> declarations;
 
   if(declaration){
     declarations.push_back(std::move(declaration));
@@ -1672,7 +1684,7 @@ static std::unique_ptr<externASTnode> externParser(){
 static std::vector<std::unique_ptr<externASTnode>> externListPrimeParser(){
   std::vector<std::unique_ptr<externASTnode>> externListPrime;
   std::vector<std::unique_ptr<externASTnode>> returner;
-  
+
   if(CurTok.type != EXTERN && CurTok.type != VOID_TOK && CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK)
   {
     line();printf("ERROR: Missing 'extern' or a type - INT FLOAT BOOL or VOID\n");
@@ -1723,9 +1735,11 @@ static std::vector<std::unique_ptr<externASTnode>> externListParser(){
 static std::unique_ptr<globalASTnode> globalParser(){
   TOKEN store = CurTok;
   auto parameter = paramParser();
+  if(parameter == nullptr) return nullptr;
   if(CurTok.type != SC){
     line();printf("ERROR: Missing SC ';' after GLOBAL declaration\n");
     errorMessage();
+    return nullptr;
   }
   auto typeGL = std::make_unique<typeASTnode>(parameter->getTokenOfType());
   auto identGL = std::make_unique<identASTnode>(parameter->getTokenOfIdent(), parameter->getName());
@@ -1734,11 +1748,36 @@ static std::unique_ptr<globalASTnode> globalParser(){
   return globalNode;
 }
 
+static std::vector<std::unique_ptr<globalASTnode>>  globalsListParser(){
+  std::vector<std::unique_ptr<globalASTnode>> globalList;
+  if(CurTok.type == EOF || CurTok.type == EOF_TOK) return globalList;
+  auto global = globalParser();
+  auto globalListT = globalsListParser();
+  if(global){
+    globalList.push_back(std::move(global));
+  }
+  int size = (int) globalListT.size();
+  for (size_t i = 0; i < size; i++)
+  {
+    globalList.push_back(std::move(globalListT.at(i)));
+  }
+  return globalList;
+}
+
 
 
 // program ::= extern_list decl_list
 static void parser() {
-  // add body
+  if(CurTok.type == EXTERN){
+    auto externlist = externListParser();
+    auto globalList = globalsListParser();
+    auto declList = declListParser();
+    if(CurTok.type != EOF){
+      line();printf("ERROR: EOF expected after decls\n");
+      errorMessage();
+    }
+    
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -1785,10 +1824,10 @@ int main(int argc, char **argv) {
   //   getNextToken();
   // }
   getNextToken();
-  while(CurTok.type != EOF_TOK){
-    auto blank = globalParser();
+  do{
+    auto x = globalsListParser();
     getNextToken();
-  }
+  } while((CurTok.type != EOF_TOK));
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
   fprintf(stderr, "Lexer Finished\n");
