@@ -445,6 +445,10 @@ public:
     return returner;
   };
 
+  TOKEN getToken(){
+    return token;
+  }
+
   int getType(){
     return token.type;
   }
@@ -527,6 +531,9 @@ public:
   virtual std::string to_string() const override{
     return value;
   }
+  TOKEN getToken(){
+    return token;
+  }
 };
 
 class parameterASTnode : public ASTnode {
@@ -542,11 +549,15 @@ public:
     stringy = stringy + "\nNAME:     " + identifier->to_string();
     return stringy;
   }
-
   int getType(){
     return type->getType();
   }
-
+  TOKEN getTokenOfType(){
+    return type->getToken();
+  }
+  TOKEN getTokenOfIdent(){
+    return identifier->getToken();
+  }
   std::string getName(){
     return identifier->to_string();
   }
@@ -596,6 +607,25 @@ public:
     stringy = stringy + "\nExpression:     " + expr->to_string().c_str();
     stringy = stringy + "\nStatements:     " + stmt->to_string().c_str();
     return stringy;
+  }
+};
+
+class globalASTnode : public ASTnode {
+  std::unique_ptr<typeASTnode> type;
+  std::unique_ptr<identASTnode> ident;
+public:
+  globalASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Ident)
+  : type(std::move(Type)), ident(std::move(Ident)) {}
+  virtual Value * codegen() override {};
+  int getType() const {
+    return type->getType();
+  }
+  std::string get_name(){
+    return ident->to_string();
+  }
+  virtual std::string to_string() const override{
+    std::string stringy = "\nGLOBAL:\n";
+    stringy += "Parameters: " + type->to_string() + "-" + ident->to_string() + "\n";
   }
 };
 
@@ -1478,8 +1508,8 @@ static std::unique_ptr<parameterASTnode> paramParser(){
   if(CurTok.type == IDENT){
     auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
     getNextToken();
-    if(CurTok.type != RPAR && CurTok.type != COMMA){
-      line();printf("ERROR: Expected COMMA ',' OR RPAR ')' instead encountered %s", CurTok.lexeme.c_str());
+    if(CurTok.type != RPAR && CurTok.type != COMMA && CurTok.type != SC){
+      line();printf("ERROR: Expected COMMA ',' SC';' OR RPAR ')' instead encountered %s", CurTok.lexeme.c_str());
       errorMessage();
       return nullptr;
     }
@@ -1489,8 +1519,8 @@ static std::unique_ptr<parameterASTnode> paramParser(){
     line();printf("ERROR: Missing IDENT, %s is not of type IDENT", CurTok.lexeme.c_str());
     errorMessage();
     auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
-    if(CurTok.type != RPAR && CurTok.type != COMMA){
-      line();printf("ERROR: Expected COMMA ',' OR RPAR ')' instead encountered %s", CurTok.lexeme.c_str());
+    if(CurTok.type != RPAR && CurTok.type != COMMA && CurTok.type != SC){
+      line();printf("ERROR: Expected COMMA ',' SC';' OR RPAR ')' instead encountered %s", CurTok.lexeme.c_str());
       errorMessage();
       return nullptr;
     }
@@ -1690,6 +1720,20 @@ static std::vector<std::unique_ptr<externASTnode>> externListParser(){
   return externList;
 }
 
+static std::unique_ptr<globalASTnode> globalParser(){
+  TOKEN store = CurTok;
+  auto parameter = paramParser();
+  if(CurTok.type != SC){
+    line();printf("ERROR: Missing SC ';' after GLOBAL declaration\n");
+    errorMessage();
+  }
+  auto typeGL = std::make_unique<typeASTnode>(parameter->getTokenOfType());
+  auto identGL = std::make_unique<identASTnode>(parameter->getTokenOfIdent(), parameter->getName());
+  auto globalNode = std::make_unique<globalASTnode>(std::move(typeGL), std::move(identGL));
+  getNextToken();
+  return globalNode;
+}
+
 
 
 // program ::= extern_list decl_list
@@ -1742,7 +1786,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   while(CurTok.type != EOF_TOK){
-    auto blank = returnStatementParser();
+    auto blank = globalParser();
     getNextToken();
   }
   if(errorCount > 0) printf("============================\n");
