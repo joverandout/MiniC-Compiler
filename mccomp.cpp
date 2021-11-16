@@ -616,7 +616,7 @@ class globalASTnode : public ASTnode {
 public:
   globalASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Ident)
   : type(std::move(Type)), ident(std::move(Ident)) {}
-  virtual Value * codegen() override {};
+  virtual Value *codegen() override {};
   int getType() const {
     return type->getType();
   }
@@ -630,14 +630,31 @@ public:
   }
 };
 
-// class programASTnode : public ASTnode{
-//   std::vector<std::unique_ptr<externASTnode>> externList;
-//   std::vector<std::unique_ptr<globalASTnode> globalList;
-//   std::vector<std::unique_ptr<
-// }
+class programASTnode : public ASTnode{
+  std::vector<std::unique_ptr<externASTnode>> externList;
+  std::vector<std::unique_ptr<ASTnode>> declList;
+public:
+  virtual ~programASTnode(){};
+  programASTnode(std::vector<std::unique_ptr<externASTnode>> Externs, std::vector<std::unique_ptr<ASTnode>> Decls) : externList(std::move(Externs)), declList(std::move(Decls)) {}
+  programASTnode(std::vector<std::unique_ptr<ASTnode>> Decls) : declList(std::move(Decls)) {}
+  virtual Value *codegen() override {};
 
-
-
+  virtual std::string to_string() const override{
+    std::string stringy = "--------------AST-------------\nPROGRAM:\nExterns:\n";
+    int size1 = externList.size();
+    int size2 = declList.size();
+    for (size_t i = 0; i < size1; i++)
+    {
+        stringy = stringy + "       " + externList.at(i)->to_string().c_str() + "\n";
+    }
+    stringy = stringy + "Declarations:\n";
+    for (size_t i = 0; i < size2; i++)
+    {
+        stringy = stringy + "       " + declList.at(i)->to_string().c_str();
+    }
+    
+  }
+};
 
 
 /* add other AST nodes as nessasary */
@@ -1732,8 +1749,8 @@ static std::vector<std::unique_ptr<externASTnode>> externListParser(){
   return externList;
 }
 
-static std::vector<std::unique_ptr<globalASTnode>>  globalsListParser(){
-  std::vector<std::unique_ptr<globalASTnode>> globalList;
+static std::vector<std::unique_ptr<ASTnode>> globalsListParser(){
+  std::vector<std::unique_ptr<ASTnode>> globalList;
   if(CurTok.type == EOF || CurTok.type == EOF_TOK) return globalList;
   auto global = declParser();
   auto globalListT = globalsListParser();
@@ -1753,24 +1770,31 @@ static std::vector<std::unique_ptr<globalASTnode>>  globalsListParser(){
 // program ::= extern_list decl_list
 static std::unique_ptr<ASTnode> parser() {
   bool externListBool = false;
+  auto externlist = nullptr;
+  bool declBool = false;
   if(CurTok.type == EXTERN){
     externListBool = true;
   }
   if(externListBool == false && CurTok.type != VOID_TOK && CurTok.type != INT_TOK && CurTok.type != BOOL_TOK && CurTok.type != FLOAT_TOK){
     return nullptr;
   }
-  if(externListBool){auto externlist = externListParser();}
+  if(externListBool){
+    auto externlist = externListParser();
+    auto declList = globalsListParser();
+    if(CurTok.type != EOF){
+      line();printf("ERROR: EOF expected after decls\n");
+      errorMessage();
+    }
+    return std::make_unique<programASTnode>(std::move(externlist), std::move(declList));
+  }
   auto declList = globalsListParser();
   if(CurTok.type != EOF){
     line();printf("ERROR: EOF expected after decls\n");
     errorMessage();
+    return nullptr;
   }
-  if(externListBool){
-
-  }
-  else{
-    
-  }
+  return std::make_unique<programASTnode>(std::move(declList));
+  
 }
 
 //===----------------------------------------------------------------------===//
