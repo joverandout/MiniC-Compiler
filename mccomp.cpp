@@ -577,6 +577,21 @@ public:
   }
 };
 
+class assignmentASTnode : public ASTnode {
+    std::unique_ptr<identASTnode> ident;
+    std::unique_ptr<ASTnode> expr;
+
+public:
+  assignmentASTnode(std::unique_ptr<identASTnode> Ident, std::unique_ptr<ASTnode> Expr) : ident(std::move(Ident)), expr(std::move(Expr)) {}
+  virtual Value *codegen() override {};
+
+  virtual std::string to_string() const override {
+    std::string stringy = "\nASSIGNMENT:\n";
+    stringy = stringy + "Name:   " + ident->to_string() + "\nValue:  " + expr->to_string();
+    return stringy;
+  }
+};
+
 class parameterASTnode : public ASTnode {
   std::unique_ptr<typeASTnode> type;
   std::unique_ptr<identASTnode> identifier;
@@ -953,8 +968,8 @@ static std::unique_ptr<ASTnode> ElementParser(){
     line();
     printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
     errorMessage(); 
-    getNextToken();  
   }
+  return nullptr;
 }
 
 
@@ -977,9 +992,9 @@ static std::unique_ptr<ASTnode> factorParser(){
   else{
     line();
     printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-    errorMessage();
-    getNextToken();  
+    errorMessage(); 
   }
+  return nullptr;
   
 }
 
@@ -1013,7 +1028,6 @@ static std::unique_ptr<ASTnode> subExprParser(){
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
-    getNextToken();
   }
   return nullptr;
 }
@@ -1065,78 +1079,89 @@ static std::unique_ptr<ASTnode> relationalParser(){
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
-    return nullptr;
   }
+  return nullptr;
 }
 
-static void equivalenceParser(){
+static std::unique_ptr<ASTnode> equivalenceParser(){
   if(curTokType(CurTok)){
-    relationalParser();
-
+    auto rel = relationalParser();
+    TOKEN eqne = CurTok;
     if(CurTok.type == EQ || CurTok.type == NE){
       getNextToken();
-      equivalenceParser();
-      //if relationa equivalence'
-      //call equivalence
+      auto eq = equivalenceParser();
+      if(rel != nullptr){
+        if(eq != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(rel), eqne, std::move(eq)));
+        }
+      }
+      else{
+        if(rel) return rel;
+      }
     }
   }
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
     errorMessage();   
-    getNextToken();
   }
+  return nullptr;
 }
 
-static void termParser(){
+static std::unique_ptr<ASTnode> termParser(){
   if(curTokType(CurTok)){
-    equivalenceParser();
+    auto eq = equivalenceParser();
     TOKEN storeCurrent =  CurTok;
     if (CurTok.type == AND){
       getNextToken();
-      termParser();
-      //IF(TERM && EQUIVALENCE)
+      auto term = termParser();
+      if(term != nullptr){
+        if(eq != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(eq), storeCurrent, std::move(term)));
+        }
+      }
     }
     else{
-      return;
-      //IF epsiolon then just return equivalence
+      if(eq != nullptr) return eq;
     }
   }
   else if(!AndTerm()){
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();   
-    getNextToken();
-    return;
   }
   else {
     line();printf("ERROR: Missing term -> Expected a literal, variable, identity, '(', '!', or '-'\n");
     errorMessage();  
-    getNextToken(); 
   }
-  return;
+  return nullptr;
 }
 
-static void rvalParser(){
+static std::unique_ptr<ASTnode> rvalParser(){
   if(curTokType(CurTok)){
-    termParser();
+    auto term = termParser();
     TOKEN storeCurrent = CurTok;
     if(CurTok.type == OR){
       getNextToken();
-      rvalParser();
-      return;
+      auto rval = rvalParser();
+      if(term != nullptr){
+        if(rval != nullptr){
+          return std::move(std::make_unique<expressionASTnode>(std::move(term), storeCurrent, std::move(rval)));
+        }
+      }
     }
-    return;
+    else{
+      if(term != nullptr) return term;
+    }
   }
   else if(!OrTerm()){
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();   
-    getNextToken();
-    return;
+    return nullptr;
   }
   else{
     line();printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
     errorMessage();   
-    getNextToken();
   }
+  return nullptr;
 }
 
 static std::unique_ptr<ASTnode> expressionParser(){
@@ -1144,24 +1169,24 @@ static std::unique_ptr<ASTnode> expressionParser(){
     TOKEN temporaryIdentifierStorage = CurTok;
     getNextToken();
     if(CurTok.type == ASSIGN){
-      //AST NODE
+      auto identifier = std::make_unique<identASTnode>(temporaryIdentifierStorage, temporaryIdentifierStorage.lexeme);
       getNextToken();
-      expressionParser();
-      //AST SOMETHING OR OTHER
-      return nullptr;
+      auto expr = expressionParser();
+      if(expr){
+        return std::move(std::make_unique<assignmentASTnode>(std::move(identifier), std::move(expr)));
+      }
     }
     putBackToken(CurTok);
     putBackToken(temporaryIdentifierStorage);
     getNextToken();
   }
   if (curTokType(CurTok)){
-    rvalParser();
-    return nullptr;
+    auto rval = rvalParser();
+    if(rval != nullptr) return std::move(rval);
   }
   else{
     line();printf("ERROR: Missing assignment or expression \n");
     errorMessage();
-    getNextToken();
   }
   return nullptr;
 }
