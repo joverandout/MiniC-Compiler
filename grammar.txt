@@ -1,7 +1,5 @@
-program      := extern_list globals_list decl_list
-	            | globals_list decl_list
-globals_list := global globals_list | epsilon
-global       := param ";"
+program      := extern_list decl_list
+	            | decl_list
 extern_list  := extern extern_list'
 extern_list' := extern extern_list'
 	            | epsilon

@@ -1751,15 +1751,24 @@ static std::vector<std::unique_ptr<globalASTnode>>  globalsListParser(){
 
 
 // program ::= extern_list decl_list
-static void parser() {
+static std::unique_ptr<ASTnode> parser() {
+  bool externListBool = false;
   if(CurTok.type == EXTERN){
-    auto externlist = externListParser();
-    auto globalList = globalsListParser();
-    auto declList = declListParser();
-    if(CurTok.type != EOF){
-      line();printf("ERROR: EOF expected after decls\n");
-      errorMessage();
-    }
+    externListBool = true;
+  }
+  if(externListBool == false && CurTok.type != VOID_TOK && CurTok.type != INT_TOK && CurTok.type != BOOL_TOK && CurTok.type != FLOAT_TOK){
+    return nullptr;
+  }
+  if(externListBool){auto externlist = externListParser();}
+  auto declList = globalsListParser();
+  if(CurTok.type != EOF){
+    line();printf("ERROR: EOF expected after decls\n");
+    errorMessage();
+  }
+  if(externListBool){
+
+  }
+  else{
     
   }
 }
