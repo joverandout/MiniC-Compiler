@@ -1087,7 +1087,8 @@ static std::unique_ptr<ASTnode> relationalParser(){
 
 static std::unique_ptr<ASTnode> equivalenceParser(){
   if(curTokType(CurTok)){
-    auto rel = relationalParser();   
+    auto rel = relationalParser(); 
+    //printf("\n%s\n", rel->to_string().c_str());  
     TOKEN eqne = CurTok;
     if(CurTok.type == EQ || CurTok.type == NE){
       getNextToken();
@@ -1095,9 +1096,9 @@ static std::unique_ptr<ASTnode> equivalenceParser(){
       if(eq != nullptr && rel != nullptr){
           return std::move(std::make_unique<expressionASTnode>(std::move(rel), eqne, std::move(eq)));
       }
-      else{
-        if(rel != nullptr){return rel;}
-      }
+    }
+    else{
+      if(rel != nullptr){return rel;}
     }
   }
   else{
@@ -2001,7 +2002,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   do{
-    auto x = equivalenceParser();
+    auto x = rvalParser();
     if(x != nullptr){
       printf("%s", x->to_string().c_str());
     }
