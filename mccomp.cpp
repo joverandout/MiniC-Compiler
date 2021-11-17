@@ -1028,6 +1028,7 @@ static std::unique_ptr<ASTnode> subExprParser(){
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
+    getNextToken();
   }
   return nullptr;
 }
@@ -1079,30 +1080,30 @@ static std::unique_ptr<ASTnode> relationalParser(){
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();
+    getNextToken();
   }
   return nullptr;
 }
 
 static std::unique_ptr<ASTnode> equivalenceParser(){
   if(curTokType(CurTok)){
-    auto rel = relationalParser();
+    auto rel = relationalParser();   
     TOKEN eqne = CurTok;
     if(CurTok.type == EQ || CurTok.type == NE){
       getNextToken();
       auto eq = equivalenceParser();
-      if(rel != nullptr){
-        if(eq != nullptr){
+      if(eq != nullptr && rel != nullptr){
           return std::move(std::make_unique<expressionASTnode>(std::move(rel), eqne, std::move(eq)));
-        }
       }
       else{
-        if(rel) return rel;
+        if(rel != nullptr){return rel;}
       }
     }
   }
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
     errorMessage();   
+    getNextToken();
   }
   return nullptr;
 }
@@ -1127,6 +1128,7 @@ static std::unique_ptr<ASTnode> termParser(){
   else if(!AndTerm()){
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
     errorMessage();   
+    getNextToken();
   }
   else {
     line();printf("ERROR: Missing term -> Expected a literal, variable, identity, '(', '!', or '-'\n");
@@ -1154,7 +1156,8 @@ static std::unique_ptr<ASTnode> rvalParser(){
   }
   else if(!OrTerm()){
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
-    errorMessage();   
+    errorMessage();  
+    getNextToken(); 
     return nullptr;
   }
   else{
@@ -1998,7 +2001,10 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   do{
-    auto x = globalsListParser();
+    auto x = equivalenceParser();
+    if(x != nullptr){
+      printf("%s", x->to_string().c_str());
+    }
     getNextToken();
   } while((CurTok.type != EOF_TOK));
   if(errorCount > 0) printf("============================\n");
