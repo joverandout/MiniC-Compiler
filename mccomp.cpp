@@ -2002,7 +2002,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   do{
-    auto x = rvalParser();
+    auto x = expressionStatementParser();
     if(x != nullptr){
       printf("%s", x->to_string().c_str());
     }
