@@ -38,6 +38,9 @@ using namespace llvm;
 using namespace llvm::sys;
 
 bool lineneeded = true;
+int inrhs = 0;
+bool exprbool = false;
+bool usestart = true;
 
 int errorCount = 0;
 int assign = 0;
@@ -634,6 +637,7 @@ public:
       for (size_t i = 0; i < statements.size(); i++)
       {
         tostring = tostring + "" + std::string(statements.at(i)->to_string().c_str());
+        //if(exprbool) tostring+="HELLO\n";
       }
       indentation--;
     }
@@ -663,17 +667,22 @@ public:
       if(i == 0) stringy += indent ;
       else stringy = stringy + "|      ";
     }
+    lineneeded = true;
+    usestart = false;
     stringy = stringy +   "├──Condition: " + expr->to_string();
+    usestart = true;
+    stringy += "\n";
+
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent ;
       else stringy = stringy + "|      ";
     }
     stringy = stringy +   "├──Block: \n";
+    lineneeded = false;
     indentation++;
     stringy += block->to_string();
     indentation--;
-    if(lineneeded) stringy += "\n";
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent ;
@@ -722,8 +731,10 @@ public:
       else stringy = stringy + "|      ";
     }
     indentation++;
+    usestart = false;
     stringy = stringy + "Value: " + expr->to_string();
-    if(lineneeded) stringy += "\n";
+    usestart = true;
+    stringy += "\n";
     lineneeded = true;
     indentation--;
     indentation--;
@@ -775,17 +786,22 @@ public:
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
     bool indentb = false;
+    exprbool = true;
     if(isrhsorlhs){
       indentation++;
       indentb = true;
     }
-    std::string stringy = "\n";
+    std::string stringy = "";
+    if(usestart){
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent;
       else stringy = stringy + "|      ";
     }
-    stringy += "├──Expression:\n";
+      stringy += "├──";
+    }
+    stringy += "Expression:\n";
+    usestart = true ;
     indentation++;
     for (size_t i = 0; i < indentation; i++)
     {
@@ -807,7 +823,9 @@ public:
       else stringy = stringy + "|      ";
     }
     isrhsorlhs = true;
-    stringy += "├──Right hand side: " + right->to_string() + "\n";
+    inrhs++;
+    stringy += "├──Right hand side: " + right->to_string();
+    inrhs--;
     lineneeded = false;
     isrhsorlhs = false;
     indentation--;
@@ -935,9 +953,11 @@ public:
       else stringy = stringy + "|      ";
     }
     stringy = stringy + "├──While statement: ";
+    usestart = false;
     stringy = stringy  + expr->to_string().c_str();
+    usestart = true;
     indentation++;
-    stringy = stringy + stmt->to_string().c_str();
+    stringy = stringy + "\n" + stmt->to_string().c_str();
     indentation--;
     return stringy;
   }
