@@ -866,7 +866,6 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
         getNextToken();
       default:
         std::string printable = "============================\nERROR: Token " + CurTok.lexeme + " is not ',' (COMMA) as expected\n";
-        printf("%s", printable.c_str());
         errorMessage();     
         break;
     }
@@ -1237,7 +1236,6 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
     }
     else{
       line();printf("ERROR: No semi colon at line end, instead Token ");
-      printf("%s", CurTok.lexeme.c_str());
       printf(" was encountered rather than ';' as expected.\n");
       errorMessage();  
       getNextToken(); 
@@ -1484,7 +1482,6 @@ static std::vector<std::unique_ptr<parameterASTnode>> paramsParser(){
 }
 
 static std::vector<std::unique_ptr<globalASTnode>> localDeclsParser(){
-  printf("localDeclsParser\n");
   std::vector<std::unique_ptr<globalASTnode>> declarations;
   if(CurTok.type == RBRA) return declarations;
   if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
@@ -1534,7 +1531,6 @@ static std::unique_ptr<BlockASTnode> blockParser(){
 }
 
 static std::unique_ptr<BlockASTnode> elseParser(){
-  printf("%s", CurTok.lexeme.c_str());
   if(CurTok.type != ELSE && CurTok.type != IDENT && CurTok.type!=SC && CurTok.type!=LBRA && CurTok.type!=WHILE && CurTok.type!=IF && CurTok.type!=RETURN && CurTok.type!=MINUS && CurTok.type!=NOT && CurTok.type!=LPAR && CurTok.type!=INT_LIT && CurTok.type!=BOOL_LIT && CurTok.type!=FLOAT_LIT && CurTok.type!=RBRA && CurTok.type != EOF_TOK){
     line();printf("ERROR: missing 'ELSE' declaration at the beginning of else block\n");
     errorMessage();
@@ -1545,9 +1541,7 @@ static std::unique_ptr<BlockASTnode> elseParser(){
       line();printf("ERROR: missing LBRA '{' after 'ELSE'\n");
       errorMessage();
     }
-    printf("helloblock%s", CurTok.lexeme.c_str());
     auto blockstatement = blockParser();
-    printf("\n\n\n%s\n\n\n", blockstatement->to_string().c_str());
     if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type == EOF_TOK || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
       return blockstatement;    
     }
@@ -1593,7 +1587,6 @@ static std::unique_ptr<ifASTnode> ifParser(){
       getNextToken();
     }
     auto ifBlock = blockParser();
-    printf("elSEY %s\n", CurTok.lexeme.c_str());
     auto elseStatement = elseParser();
 
     if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA || CurTok.type == EOF_TOK ) {
@@ -1705,9 +1698,7 @@ static std::unique_ptr<functionASTnode> functionDeclarationParser(){
   }
   auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
   if(CurTok.type == IDENT){
-    printf(CurTok.lexeme.c_str());
     getNextToken();
-    printf(CurTok.lexeme.c_str());
   }
   if(CurTok.type != LPAR){
     line();printf("ERROR: Missing LPAR '('\n");
@@ -1776,6 +1767,7 @@ static std::unique_ptr<ASTnode> declParser(){
     TOKEN two = CurTok;
     getNextToken();
     TOKEN sc = CurTok;
+    putBackToken(sc);
     putBackToken(two);
     putBackToken(one);
     CurTok = one;
@@ -1997,14 +1989,14 @@ static std::unique_ptr<ASTnode> parser() {
     auto externlist = externListParser();
     //printf("%s", externlist.at(0)->to_string().c_str());
     auto declList = globalsListParser();
-    if(CurTok.type != EOF){
+    if(CurTok.type != EOF_TOK){
       line();printf("ERROR: EOF expected after decls\n");
       errorMessage();
     }
     return std::make_unique<programASTnode>(std::move(externlist), std::move(declList));
   }
   auto declList = globalsListParser();
-  if(CurTok.type != EOF){
+  if(CurTok.type != EOF_TOK){
     line();printf("ERROR: EOF expected after decls\n");
     errorMessage();
     return nullptr;
