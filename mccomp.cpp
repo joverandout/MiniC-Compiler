@@ -37,6 +37,8 @@
 using namespace llvm;
 using namespace llvm::sys;
 
+bool lineneeded = true;
+
 int errorCount = 0;
 int assign = 0;
 int indentation = 0;
@@ -524,9 +526,22 @@ public:
 
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    std::string stringy = "\nReturn Statement:\n";
+    std::string stringy = "";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Return Statement:\n";
     if(expression){
-      stringy = stringy + "Expression:    " + expression->to_string().c_str() + "\n";
+      indentation++;
+      for (size_t i = 0; i < indentation; i++)
+      {
+        if(i == 0) stringy += indent;
+        else stringy = stringy + "|      ";
+      }
+      stringy = stringy + "├──Expression: " + expression->to_string().c_str() + "\n";
+      indentation--;
     }
     return stringy;
   }
@@ -658,6 +673,7 @@ public:
     indentation++;
     stringy += block->to_string();
     indentation--;
+    if(lineneeded) stringy += "\n";
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent ;
@@ -706,7 +722,9 @@ public:
       else stringy = stringy + "|      ";
     }
     indentation++;
-    stringy = stringy + "Value: " + expr->to_string() + "\n";
+    stringy = stringy + "Value: " + expr->to_string();
+    if(lineneeded) stringy += "\n";
+    lineneeded = true;
     indentation--;
     indentation--;
     return  stringy;
@@ -789,10 +807,13 @@ public:
       else stringy = stringy + "|      ";
     }
     isrhsorlhs = true;
-    stringy += "├──Right hand side: " + right->to_string() +"\n";
+    stringy += "├──Right hand side: " + right->to_string() + "\n";
+    lineneeded = false;
     isrhsorlhs = false;
     indentation--;
-    if(indentb == false) indentation--;
+    if(indentb == true){
+      indentation--;
+    }
     return stringy;
   }
 };
