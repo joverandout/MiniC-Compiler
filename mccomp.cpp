@@ -846,7 +846,7 @@ class functionCall : public ASTnode {
   std::string caller;
 public:
   functionCall(std::unique_ptr<ASTnode> Name, std::vector<std::unique_ptr<ASTnode>> Arguments, TOKEN token) : name(std::move(Name)), arguments(std::move(Arguments)), caller(token.lexeme.c_str()){}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override{
     std::string stringy = "";
     for (size_t i = 0; i < indentation; i++)
@@ -2365,13 +2365,140 @@ Value *expressionASTnode::codegen() {
         return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
       }
       else if(operation == "&&"){
-        return LogErrorV("AND operation can only be applied to 2 boolean values");
+        return LogErrorV("AND operation can only be applied to 2 boolean values not ints");
       }
       else if(operation == "||"){
-        return LogErrorV("AND operation can only be applied to 2 boolean values");
+        return LogErrorV("AND operation can only be applied to 2 boolean values not ints");
+      }
+    }
+    else if(lefttype == Type::getFloatTy(TheContext)){
+      if(operation == "+"){
+        return Builder.CreateFAdd(L, R, "addtmp");
+      }
+      else if(operation == "-"){
+        return Builder.CreateFSub(L, R, "subtmp");
+      }
+      else if(operation == "*"){
+        return Builder.CreateFMul(L, R, "multmp");
+      }
+      else if(operation == "/"){
+        return Builder.CreateFDiv(L, R, "dictmp");
+      }
+      else if(operation == "%"){
+        return Builder.CreateFRem(L, R, "remtemp");
+      }
+      else if(operation == "<"){
+        L = Builder.CreateFCmpULT(L, R, "cmptemp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == ">"){
+        L = Builder.CreateFCmpUGT(L, R, "cmptemp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "<="){
+        L = Builder.CreateFCmpULE(L, R, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == ">="){
+        L = Builder.CreateFCmpUGE(L, R, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "=="){
+        L = Builder.CreateFCmpUEQ(L, R, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "!="){
+        L = Builder.CreateFCmpUNE(L, R, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "&&"){
+        return LogErrorV("AND operation can only be applied to 2 boolean values not floats");
+      }
+      else if(operation == "||"){
+        return LogErrorV("AND operation can only be applied to 2 boolean values not floats");
+      }
+    }
+    else if(lefttype == Type::getInt1Ty(TheContext)){
+      if(operation == "+"){
+        return LogErrorV("Addition operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "-"){
+        return LogErrorV("Subtraction operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "*"){
+        return LogErrorV("Multiplication operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "/"){
+        return LogErrorV("Division operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "%"){
+        return LogErrorV("Modulo operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "<"){
+        return LogErrorV("Less than operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == ">"){
+        return LogErrorV("Greater than operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "<="){
+        return LogErrorV("Less than or equal to operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == ">="){
+        return LogErrorV("Greater than or equal to operation cannot be applied to 2 boolean values");
+      }
+      else if(operation == "=="){
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "!="){
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "&&"){
+        return Builder.CreateAnd(L,R);
+      }
+      else if(operation == "||"){
+        return Builder.CreateOr(L,R);
       }
     }
   }
+  std::string stringy = "Invalid binary operator '" + operation + "'";
+  return LogErrorV(stringy.c_str());
+}
+
+Value *functionCall::codegen() {
+  // Value *V = NamedValues[IdentifierStr];
+  // if(!V){
+  //   Value *VV = TheModule->getNamedvalue(IdentifierStr);
+  //   if(!VV){
+  //     std::string returnval = "Variable '" + IdentifierStr +"' is not in current scope";
+  //     return LogErrorV(returnval.c_str());
+  //   }
+  // }
+  Function *callerFunc = TheModule->getFunction(caller);
+  if(callerFunc == nullptr){
+    std::string returnval = "Unknown function '"+name->to_string()+"' referenced";
+    return LogErrorV(returnval.c_str());
+  }
+  if(callerFunc->arg_size() > arguments.size())
+  {
+    std::string returnval = std::to_string(callerFunc->arg_size()-arguments.size()) + " arguments too many passed";
+    return LogErrorV(returnval.c_str());
+  }
+  if(callerFunc->arg_size() < arguments.size())
+  {
+    std::string returnval = std::to_string(arguments.size()-callerFunc->arg_size()) + " missing arguments not passed";
+    return LogErrorV(returnval.c_str());
+  }
+
+  std::vector<Value *> Argss;
+  int size = (int) arguments.size();
+  for (int i = 0; i < size; i++)
+  {
+    Argss.push_back(arguments[i]->codegen());
+    if(!Argss.back()){
+      return nullptr;
+    }
+  }
+  return Builder.CreateCall(callerFunc, Argss, "calltmp");  
 }
 
 //===----------------------------------------------------------------------===//
