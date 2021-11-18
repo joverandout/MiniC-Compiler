@@ -1,5 +1,5 @@
 // MiniC program to test addition
-extern int print_int(int X);
+extern int print_int(int X, bool y);
 
 int addition(int n, int m){
 	int result;

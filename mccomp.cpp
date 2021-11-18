@@ -38,6 +38,17 @@ using namespace llvm;
 using namespace llvm::sys;
 
 int errorCount = 0;
+int indentation = 0;
+std::string indent = "    ";
+
+std::string getIndent(){
+  std::string id = "";
+  for (size_t i = 0; i < indentation; i++)
+  {
+    id = id + indent;
+  }
+  return id;
+}
 
 FILE *pFile;
 
@@ -466,25 +477,25 @@ public:
   typeASTnode(TOKEN t) : token(t){}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override{
-    std::string returner = "\nValue or Function type: '";
+    std::string returner = "";
     switch (token.type)
     {
     case INT_TOK:
-      returner = returner + "INT'";
+      returner = returner + "'INT'";
       break;
     case BOOL_TOK:
-      returner = returner + "BOOL'";
+      returner = returner + "'BOOL'";
       break;
     case FLOAT_TOK:
-      returner = returner + "FLOAT'";
+      returner = returner + "'FLOAT'";
       break;
     case VOID_TOK:
-      returner = returner + "VOID'";
+      returner = returner + "'VOID'";
       break;
     default:
       break;
     }
-    returner = returner + "\n";
+    returner = returner;
     return returner;
   };
 
@@ -550,8 +561,19 @@ public:
     return ident->to_string();
   }
   virtual std::string to_string() const override{
-    std::string stringy = "\DECL:\n";
-    stringy += "Type: " + type->typereturn() + "->" + ident->to_string() + "\n";
+    std::string stringy = "";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Variable declared:" +  ident->to_string() + "\n";;
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "|  Type: " + type->typereturn();
     return stringy;
   }
 };
@@ -565,22 +587,38 @@ public:
   BlockASTnode(std::vector<std::unique_ptr<globalASTnode>> newDeclarations, std::vector<std::unique_ptr<ASTnode>> newStatements) :
   declarations(std::move(newDeclarations)), statements(std::move(newStatements)){}
   virtual Value *codegen() override {};
-  virtual std::string to_string() const override {
-    std::string tostring = "\nBLOCK: \n";
+  virtual std::string to_string() const override {    
+    std::string tostring = "";
     if(declarations.size() >= 1){
-      tostring = tostring + "   -> Declarations of local variables: \n";
+      tostring += "\n";
+      for (size_t i = 0; i < indentation; i++)
+      {
+        if(i == 0) tostring += indent;
+        else tostring = tostring + "|      ";
+      }
+      tostring += "├──";
+      tostring = tostring + "Declarations of local variables: \n";
+      indentation++;
       for (size_t i = 0; i < declarations.size(); i++)
       {
-        tostring = tostring + "    - " + std::string(declarations.at(i)->to_string().c_str()) + "\n";
+        tostring = tostring + std::string(declarations.at(i)->to_string().c_str()) + "\n";
       }
-      
+      indentation--;
     }
     if(statements.size() >= 1){
-      tostring = tostring + "   -> Statements: \n";
+      for (size_t i = 0; i < indentation; i++)
+      {
+        if(i == 0) tostring += indent;
+        else tostring = tostring + "|      ";
+      }
+      tostring += "├──";
+      tostring = tostring + "Statements: \n";
+      indentation++;
       for (size_t i = 0; i < statements.size(); i++)
       {
-        tostring = tostring + "    - " + std::string(statements.at(i)->to_string().c_str()) + "\n";
+        tostring = tostring + "" + std::string(statements.at(i)->to_string().c_str());
       }
+      indentation--;
     }
     return tostring;
   }
@@ -630,15 +668,16 @@ public:
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
     std::string stringy = "";
-    stringy = stringy + "VARIABLE: \n";
-    stringy = stringy + "TYPE:     "  + type->to_string();
-    stringy = stringy + "NAME:     ";
-    if(identifier){
-      stringy += identifier->to_string();
+    stringy = stringy + "Variable: ";
+    if(identifier) stringy += identifier->to_string() +"\n";
+    else stringy += "void";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
     }
-    else{
-      stringy += "N/A as func is void";
-    }
+    
+    stringy = stringy + "|  type: "  + type->to_string();
     return stringy;
   }
   int getType(){
@@ -680,8 +719,14 @@ public:
   functionCall(std::unique_ptr<ASTnode> Name, std::vector<std::unique_ptr<ASTnode>> Arguments, TOKEN token) : name(std::move(Name)), arguments(std::move(Arguments)), caller(token.lexeme.c_str()){}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override{
-    std::string stringy = "\nCALL:\n";
-    stringy = stringy +  "Name:      " + name->to_string() +"\n";
+    std::string stringy = "";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──call to: " + name->to_string() +"\n";
+    indentation++;
     if(arguments.size() > 0){
       stringy = stringy +"Arguments: " + arguments[0]->to_string();
       for (size_t i = 1; i < arguments.size(); i++)
@@ -690,6 +735,7 @@ public:
       }
       
     }
+    indentation--;
     return stringy;
   }
 };
@@ -711,15 +757,20 @@ public:
   }
 
   std::string to_string() const override {
-    std::string stringy = "\nFUNCTION: \n";
-    stringy = stringy +   "NAME:      " + identifer->to_string();
-    stringy = stringy + "\nTYPE:      " + type->to_string();
-    stringy = stringy + "\nPARAMTERS: ";
+    std::string stringy = "function: " + identifer->to_string() + "\n";
+    stringy = stringy + getIndent() + "|  " + "type: " + type->to_string() + "\n";
+    stringy = stringy + getIndent() + "|  " + "parameters: " + "\n";
+    indentation++;
     for (size_t i = 0; i < parameters.size(); i++)
     {
-      stringy = stringy + parameters.at(i)->to_string().c_str();
-      if(i < parameters.size()-1) stringy = stringy + "\n           ";
+      for (size_t j = 0; j < indentation -1; j++)
+      {
+        stringy = stringy + indent + "|";
+      }
+      stringy += indent + "  ├──";
+      stringy = stringy + parameters.at(i)->to_string().c_str() + "\n";
     }
+    indentation--;
     return stringy;
   }
 };
@@ -733,10 +784,19 @@ public:
   virtual Function *codegen() override {};
 
   virtual std::string to_string() const override{
-    std::string stringy = "\nFUNCTION:\n";
-    stringy = stringy + function->to_string();
-    stringy += "\nBODY:     ";
-    if(funcBody) {stringy = stringy + funcBody->to_string().c_str();}
+    std::string stringy = "function: ";
+    stringy += function->getName() +"\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent ;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "|  body: ";
+    if(funcBody) {
+      indentation++;
+      stringy = stringy + funcBody->to_string().c_str();
+    }
+    else stringy += "[empty]";
     return stringy;
   }
 };
@@ -769,18 +829,23 @@ public:
   virtual Value *codegen() override {};
 
   virtual std::string to_string() const override{
-    std::string stringy = "--------------AST-------------\nPROGRAM:\nExterns:\n";
+    std::string stringy = "--------------AST-------------\n";
     int size1 = externList.size();
     int size2 = declList.size();
+    if(size1>0) indentation++;
+    stringy = stringy + "Externs:\n";
     for (size_t i = 0; i < size1; i++)
     {
-        stringy = stringy + "       " + externList.at(i)->to_string().c_str() + "\n";
+      stringy = stringy + getIndent() + "├──"+ externList.at(i)->to_string().c_str();
     }
+    if(size1>0) indentation--;
+    if(size2>0) indentation++;
     stringy = stringy + "Declarations:\n";
     for (size_t i = 0; i < size2; i++)
-    {
-        stringy = stringy + "       " + declList.at(i)->to_string().c_str();
+    { 
+      stringy = stringy + getIndent() + "├──"+ declList.at(i)->to_string().c_str();
     }
+    if(size2>0) indentation--;
     return stringy;
   }
 };
