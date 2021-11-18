@@ -22,17 +22,11 @@ param        := var_type IDENT
 var_type     := "int"
 	            | "float"
 	            | "bool"
-stmt         := expr_stmt
-	            | block
-	            | if_stmt
-	            | while_stmt
-	            | return_stmt
+
 return_stmt  := "return" ";"
-	            | "return" expr ";"
-if_stmt      := "if" "(" expr ")" block else_stmt
-else_stmt    := "else" block
-	            | epsilon
-while_stmt   := "while" "(" expr ")" stmt
+	            | "return" expression ";"
+if_stmt      := "if" "(" expression ")" block else_stmt
+while_stmt   := "while" "(" expression ")" stmt
 block        := "{" local_decls stmt_list "}"
 local_decls  := local_decl local_decls
 	            | epsilon
@@ -44,8 +38,17 @@ stmt_list    := stmt stmt_list
 
 
 
-				
-expr_stmt    := expr ";"
+stmt         := expr_stmt
+				| block
+				| if_stmt
+				| while_stmt
+				| return_stmt	
+
+
+
+else_stmt    := "else" block
+	            | epsilon
+expr_stmt    := expression ";"
 	            | ";"
 expression	 := IDENT "=" expression
 				| rval

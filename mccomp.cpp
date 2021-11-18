@@ -399,7 +399,10 @@ class ASTnode {
 public:
   virtual ~ASTnode() {}
   virtual Value *codegen() = 0;
-  virtual std::string to_string() const {};
+  virtual std::string to_string() const {
+    std::cout << "AST NODE";
+    return "";
+  };
 };
 
 /// IntASTnode - Class for integer literals like 1, 2, 10,
@@ -485,6 +488,10 @@ public:
     return returner;
   };
 
+  std::string typereturn(){
+    return token.lexeme.c_str();
+  }
+
   TOKEN getToken(){
     return token;
   }
@@ -513,12 +520,49 @@ public:
 };
 
 
+class identASTnode : public ASTnode {
+  TOKEN token;
+  std::string value;
+
+public:
+  identASTnode(TOKEN Token, std::string Value) : token(Token), value(Value) {}
+  virtual Value *codegen() override {};
+  virtual std::string to_string() const override{
+    return value;
+  }
+  TOKEN getToken(){
+    return token;
+  }
+};
+
+
+class globalASTnode : public ASTnode {
+  std::unique_ptr<typeASTnode> type;
+  std::unique_ptr<identASTnode> ident;
+public:
+  globalASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Ident)
+  : type(std::move(Type)), ident(std::move(Ident)) {}
+  virtual Value *codegen() override {};
+  int getType() const {
+    return type->getType();
+  }
+  std::string get_name(){
+    return ident->to_string();
+  }
+  virtual std::string to_string() const override{
+    std::string stringy = "\DECL:\n";
+    stringy += "Type: " + type->typereturn() + "->" + ident->to_string() + "\n";
+    return stringy;
+  }
+};
+
+
 class BlockASTnode : public ASTnode {
-  std::vector<std::unique_ptr<ASTnode>> declarations;
+  std::vector<std::unique_ptr<globalASTnode>> declarations;
   std::vector<std::unique_ptr<ASTnode>> statements;
 
 public:
-  BlockASTnode(std::vector<std::unique_ptr<ASTnode>> newDeclarations, std::vector<std::unique_ptr<ASTnode>> newStatements) :
+  BlockASTnode(std::vector<std::unique_ptr<globalASTnode>> newDeclarations, std::vector<std::unique_ptr<ASTnode>> newStatements) :
   declarations(std::move(newDeclarations)), statements(std::move(newStatements)){}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
@@ -562,20 +606,6 @@ public:
 };
 
 
-class identASTnode : public ASTnode {
-  TOKEN token;
-  std::string value;
-
-public:
-  identASTnode(TOKEN Token, std::string Value) : token(Token), value(Value) {}
-  virtual Value *codegen() override {};
-  virtual std::string to_string() const override{
-    return value;
-  }
-  TOKEN getToken(){
-    return token;
-  }
-};
 
 class assignmentASTnode : public ASTnode {
     std::unique_ptr<identASTnode> ident;
@@ -722,25 +752,6 @@ public:
   }
 };
 
-class globalASTnode : public ASTnode {
-  std::unique_ptr<typeASTnode> type;
-  std::unique_ptr<identASTnode> ident;
-public:
-  globalASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Ident)
-  : type(std::move(Type)), ident(std::move(Ident)) {}
-  virtual Value *codegen() override {};
-  int getType() const {
-    return type->getType();
-  }
-  std::string get_name(){
-    return ident->to_string();
-  }
-  virtual std::string to_string() const override{
-    std::string stringy = "\nGLOBAL:\n";
-    stringy += "Parameters: " + type->to_string() + "-" + ident->to_string() + "\n";
-    return stringy;
-  }
-};
 
 class programASTnode : public ASTnode{
   std::vector<std::unique_ptr<externASTnode>> externList;
@@ -1283,7 +1294,7 @@ static std::unique_ptr<ASTnode> statementParser(){
   else if(CurTok.type == LBRA) //call block;
   {
     auto blockK = blockParser();
-    if(blockK != nullptr) return std::move(blockK);
+    return blockK;
   }
   else if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type ==  FLOAT_LIT || CurTok.type == MINUS || CurTok.type == NOT ||CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT){
     auto expressionStatements = expressionStatementParser();
@@ -1405,31 +1416,40 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
   return statements;
 }
 
-static std::unique_ptr<ASTnode> localDeclParser(){
+static std::unique_ptr<globalASTnode> localDeclParser(){
+  printf("localDecl\n");
+  if(CurTok.type == RBRA) return nullptr;
   if(!(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK)){
     line();printf("ERROR: Locally declared variable has no type\n");
     errorMessage();
   }
   else{
     auto variableType = vartypeParser();
+    TOKEN store = CurTok;
     if(CurTok.type == IDENT){
+      TOKEN store = CurTok;
       getNextToken();
-      if(CurTok.type == SC){
-        getNextToken();
-      }
-      else{
-        line();printf("ERROR: Missing semi colon at end of declaration. Expected ';'\n");
-        errorMessage();
-        getNextToken();
-      }
+    }
+    auto identifier = std::make_unique<identASTnode>(store, store.lexeme);
+    printf("ident made %s\n\n", identifier->to_string().c_str());
+    if(CurTok.type == SC){
+      getNextToken();
     }
     else{
-      line();printf("ERROR: Missing IDENT in declaration. Expected 'IDENT'\n");
+      line();printf("ERROR: Missing semi colon at end of declaration. Expected ';'\n");
       errorMessage();
       getNextToken();
     }
+    if(CurTok.type==INT_TOK || CurTok.type == RBRA || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA ||CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT){
+      printf("HEEHEH");
+      printf("AHAHA%sBOO", identifier->to_string().c_str());
+      return std::make_unique<globalASTnode>(std::move(variableType), std::move(identifier));
+    }
+    
   }
-  return nullptr;
+  line();printf("ERROR: Missing IDENT in declaration. Expected 'IDENT'\n");
+  errorMessage();
+  nullptr;
 }
 
 static std::vector<std::unique_ptr<parameterASTnode>> paramsParser(){
@@ -1452,10 +1472,13 @@ static std::vector<std::unique_ptr<parameterASTnode>> paramsParser(){
   return parameters;
 }
 
-static std::vector<std::unique_ptr<ASTnode>> localDeclsParser(){
-  std::vector<std::unique_ptr<ASTnode>> declarations;
+static std::vector<std::unique_ptr<globalASTnode>> localDeclsParser(){
+  printf("localDeclsParser\n");
+  std::vector<std::unique_ptr<globalASTnode>> declarations;
+  if(CurTok.type == RBRA) return declarations;
   if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
     auto local = localDeclParser();
+
     auto decls = localDeclsParser();
     if(local != nullptr){
       declarations.push_back(std::move(local));
@@ -1478,20 +1501,20 @@ static std::vector<std::unique_ptr<ASTnode>> localDeclsParser(){
 }
 
 static std::unique_ptr<BlockASTnode> blockParser(){
+  printf("BLOCK\n");
   if(CurTok.type != LBRA){
     line();printf("ERROR: Missing LBRA at beginning of block, expected to find '{'\n");
     errorMessage();
-    getNextToken();
     return nullptr;
   }
   else{
     getNextToken();
     auto declarations = localDeclsParser();
+    printf("done!");
     auto statements = statementListParser();
     if(CurTok.type != RBRA){
       line();printf("ERROR: Missing RBRA at end of block, expected to find '}'\n");
       errorMessage();
-      getNextToken();
       return nullptr;
     }
     else{
@@ -1502,23 +1525,28 @@ static std::unique_ptr<BlockASTnode> blockParser(){
 }
 
 static std::unique_ptr<BlockASTnode> elseParser(){
-  if(CurTok.type != ELSE){
+  printf("%s", CurTok.lexeme.c_str());
+  if(CurTok.type != ELSE && CurTok.type != IDENT && CurTok.type!=SC && CurTok.type!=LBRA && CurTok.type!=WHILE && CurTok.type!=IF && CurTok.type!=RETURN && CurTok.type!=MINUS && CurTok.type!=NOT && CurTok.type!=LPAR && CurTok.type!=INT_LIT && CurTok.type!=BOOL_LIT && CurTok.type!=FLOAT_LIT && CurTok.type!=RBRA && CurTok.type != EOF_TOK){
     line();printf("ERROR: missing 'ELSE' declaration at the beginning of else block\n");
     errorMessage();
-    getNextToken();
   }
-  else{
+  if(CurTok.type == ELSE){
     getNextToken();
     if(CurTok.type != LBRA){
       line();printf("ERROR: missing LBRA '{' after 'ELSE'\n");
       errorMessage();
-      getNextToken();
     }
     auto blockstatement = blockParser();
-    if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
+    if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type == EOF_TOK || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
       return blockstatement;    
     }
     else{
+      line();printf("ERRORsf: Missing literal, identifier or SC, RBRA, WHILE, IF, RETURN, MINUS, NOT LPAR in ELSE block\n");
+      errorMessage();
+    }
+  }
+  else{
+    if(CurTok.type != IDENT && CurTok.type!=SC && CurTok.type!=LBRA && CurTok.type!=WHILE && CurTok.type!=IF && CurTok.type!=RETURN && CurTok.type!=MINUS && CurTok.type!=NOT && CurTok.type!=LPAR && CurTok.type!=INT_LIT && CurTok.type!=BOOL_LIT && CurTok.type!=FLOAT_LIT && CurTok.type!=RBRA && CurTok.type != EOF_TOK){
       line();printf("ERROR: Missing literal, identifier or SC, RBRA, WHILE, IF, RETURN, MINUS, NOT LPAR in ELSE block\n");
       errorMessage();
     }
@@ -1556,7 +1584,7 @@ static std::unique_ptr<ifASTnode> ifParser(){
     auto ifBlock = blockParser();
     auto elseStatement = elseParser();
 
-    if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
+    if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA || CurTok.type == EOF_TOK ) {
       auto returnBlock = std::make_unique<ifASTnode>(std::move(expression), std::move(ifBlock), std::move(elseStatement));
       return std::move(returnBlock);
     }
@@ -2002,7 +2030,7 @@ int main(int argc, char **argv) {
   // }
   getNextToken();
   do{
-    auto x = expressionStatementParser();
+    auto x = statementParser();
     if(x != nullptr){
       printf("%s", x->to_string().c_str());
     }
