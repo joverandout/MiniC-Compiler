@@ -632,7 +632,13 @@ public:
     std::string stringy = "";
     stringy = stringy + "VARIABLE: \n";
     stringy = stringy + "TYPE:     "  + type->to_string();
-    stringy = stringy + "\nNAME:     " + identifier->to_string();
+    stringy = stringy + "NAME:     ";
+    if(identifier){
+      stringy += identifier->to_string();
+    }
+    else{
+      stringy += "N/A as func is void";
+    }
     return stringy;
   }
   int getType(){
@@ -721,10 +727,10 @@ public:
 
 class functionASTnode : public ASTnode{
   std::unique_ptr<externASTnode> function;
-  std::unique_ptr<ASTnode> funcBody;
+  std::unique_ptr<BlockASTnode> funcBody;
 public:
-  functionASTnode(std::unique_ptr<externASTnode> Function, std::unique_ptr<ASTnode> FuncBody) : function(std::move(Function)), funcBody(std::move(FuncBody)) {}
-  virtual Function *codegen() override;
+  functionASTnode(std::unique_ptr<externASTnode> Function, std::unique_ptr<BlockASTnode> FuncBody) : function(std::move(Function)), funcBody(std::move(FuncBody)) {}
+  virtual Function *codegen() override {};
 
   virtual std::string to_string() const override{
     std::string stringy = "\nFUNCTION:\n";
@@ -1288,7 +1294,7 @@ static std::unique_ptr<ASTnode> statementParser(){
   }
   else if(CurTok.type == RETURN) //call block
   {
-    auto returnN = nullptr;
+    auto returnN = returnStatementParser();
     if(returnN != nullptr) return std::move(returnN);
   }
   else if(CurTok.type == LBRA) //call block;
@@ -1506,7 +1512,6 @@ static std::vector<std::unique_ptr<globalASTnode>> localDeclsParser(){
 }
 
 static std::unique_ptr<BlockASTnode> blockParser(){
-  printf("BLOCK\n");
   if(CurTok.type != LBRA){
     line();printf("ERROR: Missing LBRA at beginning of block, expected to find '{'\n");
     errorMessage();
@@ -1691,17 +1696,18 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
   return std::make_unique<parameterASTnode>(std::move(type), std::move(ident));
 }
 
-static void functionDeclarationParser(){
+static std::unique_ptr<functionASTnode> functionDeclarationParser(){
   auto typeSpec = typeSpecParser();
+  getNextToken();
   if(CurTok.type != IDENT){
     line();printf("ERROR: Expected an identifier\n");
     errorMessage();
-    auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
   }
-  else{
-    auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+  auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
+  if(CurTok.type == IDENT){
+    printf(CurTok.lexeme.c_str());
     getNextToken();
-
+    printf(CurTok.lexeme.c_str());
   }
   if(CurTok.type != LPAR){
     line();printf("ERROR: Missing LPAR '('\n");
@@ -1717,7 +1723,8 @@ static void functionDeclarationParser(){
   }
   getNextToken();
   auto block = blockParser();
-  //TODO function astnode types
+  auto function = std::make_unique<externASTnode>(std::move(typeSpec), std::move(identifier), std::move(parameters));
+  return std::make_unique<functionASTnode>(std::move(function), std::move(block));
 }
 
 
@@ -1754,12 +1761,16 @@ static std::unique_ptr<ASTnode> declParser(){
     line();printf("ERROR: Missing type in delcaration expected one of 'INT', 'BOOL', 'FLOAT' and 'VOID'");
     errorMessage();
   }
-  switch (CurTok.type)
-  {
-  case VOID_TOK:
-    /*auto function =*/ functionDeclarationParser(); //TODO
-    break;
-  default:
+  if(CurTok.type == VOID_TOK){
+    auto function = functionDeclarationParser(); 
+    if(CurTok.type==VOID_TOK || CurTok.type==INT_TOK || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==EOF_TOK){
+      return function;
+    }
+    line();printf("ERROR: Expected EOF or a declaration");
+    errorMessage();
+    return nullptr;
+  }
+  else{
     TOKEN one = CurTok;
     getNextToken();
     TOKEN two = CurTok;
@@ -1769,14 +1780,23 @@ static std::unique_ptr<ASTnode> declParser(){
     putBackToken(one);
     CurTok = one;
     if(sc.type == SC){
-      auto variableDeclaration = nullptr;
+      auto variableDeclaration = variableDeclarationParser();
+      if(CurTok.type==VOID_TOK || CurTok.type==INT_TOK || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==EOF_TOK){
       return variableDeclaration;
     }
+    line();printf("ERROR: Expected EOF or a declaration");
+    errorMessage();
+    return nullptr;
+    }
     else{
-      /*auto functionDeclaration */functionDeclarationParser(); //TODO
+      auto functionDeclaration = functionDeclarationParser(); //TODO
+      if(CurTok.type==VOID_TOK || CurTok.type==INT_TOK || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==EOF_TOK){
+        return functionDeclaration;
+      }
+      line();printf("ERROR: Expected EOF or a declaration");
+      errorMessage();
       return nullptr;
     }
-    break;
   }
   return nullptr;
 }
@@ -1862,7 +1882,7 @@ static std::unique_ptr<externASTnode> externParser(){
         }
         getNextToken();
         auto parameters = paramsParser();
-        if(CurTok.type!= LPAR){
+        if(CurTok.type!= RPAR){
           line();printf("ERROR: Missing RPAR ')' for function\n");
           errorMessage();
         }
@@ -1975,6 +1995,7 @@ static std::unique_ptr<ASTnode> parser() {
   }
   if(externListBool){
     auto externlist = externListParser();
+    //printf("%s", externlist.at(0)->to_string().c_str());
     auto declList = globalsListParser();
     if(CurTok.type != EOF){
       line();printf("ERROR: EOF expected after decls\n");
@@ -2036,13 +2057,8 @@ int main(int argc, char **argv) {
   //   getNextToken();
   // }
   getNextToken();
-  do{
-    auto x = statementParser();
-    if(x != nullptr){
-      printf("%s", x->to_string().c_str());
-    }
-    getNextToken();
-  } while((CurTok.type != EOF_TOK));
+  static std::unique_ptr<ASTnode> graphic = parser();
+  //
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
   fprintf(stderr, "Lexer Finished\n");

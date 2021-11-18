@@ -23,29 +23,23 @@ var_type     := "int"
 	            | "float"
 	            | "bool"
 
-return_stmt  := "return" ";"
-	            | "return" expression ";"
-if_stmt      := "if" "(" expression ")" block else_stmt
-while_stmt   := "while" "(" expression ")" stmt
-block        := "{" local_decls stmt_list "}"
+
 local_decls  := local_decl local_decls
 	            | epsilon
-local_decl   := var_type IDENT ";"
-stmt_list    := stmt stmt_list
-	            | epsilon
 
-
-
-
-
+block        := "{" local_decls stmt_list "}"
 stmt         := expr_stmt
 				| block
 				| if_stmt
 				| while_stmt
 				| return_stmt	
-
-
-
+return_stmt  := "return" ";"
+	            | "return" expression ";"
+while_stmt   := "while" "(" expression ")" stmt
+if_stmt      := "if" "(" expression ")" block else_stmt
+local_decl   := var_type IDENT ";"
+stmt_list    := stmt stmt_list
+	            | epsilon
 else_stmt    := "else" block
 	            | epsilon
 expr_stmt    := expression ";"
