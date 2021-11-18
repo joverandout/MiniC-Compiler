@@ -781,7 +781,7 @@ public:
     {
         stringy = stringy + "       " + declList.at(i)->to_string().c_str();
     }
-    
+    return stringy;
   }
 };
 
@@ -1994,6 +1994,8 @@ static std::unique_ptr<ASTnode> parser() {
       errorMessage();
     }
     return std::make_unique<programASTnode>(std::move(externlist), std::move(declList));
+    // printf("%s", ex->to_string().c_str());
+    // return ex;
   }
   auto declList = globalsListParser();
   if(CurTok.type != EOF_TOK){
@@ -2002,6 +2004,8 @@ static std::unique_ptr<ASTnode> parser() {
     return nullptr;
   }
   return std::make_unique<programASTnode>(std::move(declList));
+  // printf("%s", ex->to_string().c_str());
+  // return ex;
   
 }
 
@@ -2063,6 +2067,8 @@ int main(int argc, char **argv) {
   // Run the parser now.
   parser();
   fprintf(stderr, "Parsing Finished\n");
+
+  outs() << *graphic << '\n';
 
   //********************* Start printing final IR **************************
   // Print out all of the generated code into a file called output.ll
