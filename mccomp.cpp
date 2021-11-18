@@ -38,6 +38,7 @@ using namespace llvm;
 using namespace llvm::sys;
 
 int errorCount = 0;
+int assign = 0;
 int indentation = 0;
 std::string indent = "    ";
 
@@ -426,7 +427,7 @@ public:
   IntASTnode(TOKEN tok, int val) : Val(val), Tok(tok) {}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    return "\nINT:  "+ std::to_string(Val) + "\n";
+    return std::to_string(Val);
   }
 };
 
@@ -439,7 +440,7 @@ public:
   floatASTnode(TOKEN tok, float val) : Val(val), Tok(tok) {}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    return "\FLOAT:  "+ std::to_string(Val) + "\n";
+    return std::to_string(Val);
   }
 };
 
@@ -453,7 +454,7 @@ public:
   boolASTnode(TOKEN tok, bool val) : Val(val), Tok(tok) {}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    return "\FLOAT:  "+ std::to_string(Val) + "\n";
+    return std::to_string(Val);
   }
 };
 
@@ -654,9 +655,31 @@ public:
   virtual Value *codegen() override {};
 
   virtual std::string to_string() const override {
-    std::string stringy = "\nASSIGNMENT:\n";
-    stringy = stringy + "Name:   " + ident->to_string() + "\nValue:  " + expr->to_string();
-    return stringy;
+    std::string stringy = "\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Assignment: \n";
+    assign++;
+    indentation++;
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy = stringy + "Name :" + ident->to_string() +"\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    indentation++;
+    stringy = stringy + "Value: " + expr->to_string();
+    indentation--;
+    indentation--;
+    return  stringy;
   }
 };
 
@@ -703,10 +726,35 @@ public:
   : left(std::move(LEFT)), operation(Operation.lexeme), right(std::move(RIGHT)) {}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    std::string stringy = "\nEXPRESSION:\n";
-    stringy += "LHS: " + left->to_string();
-    stringy += "\nOperator: " + operation;
-    stringy += "\nRHS: " + right->to_string();
+    indentation++;
+    std::string stringy = "\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Expression:\n";
+    indentation++;
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Left hand side: " + left->to_string() +"\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Operator: " + operation +"\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent;
+      else stringy = stringy + "|      ";
+    }
+    stringy += "├──Right hand side: " + right->to_string() +"\n";
+    indentation--;
+    indentation--;
     return stringy;
   }
 };
@@ -728,10 +776,21 @@ public:
     stringy += "├──call to: " + name->to_string() +"\n";
     indentation++;
     if(arguments.size() > 0){
-      stringy = stringy +"Arguments: " + arguments[0]->to_string();
+      for (size_t i = 0; i < indentation; i++)
+      {
+        if(i == 0) stringy += indent;
+        else stringy = stringy + "|      ";
+      }
+      stringy = stringy +"├──Argument: " + arguments[0]->to_string();
       for (size_t i = 1; i < arguments.size(); i++)
       {
-        stringy += "\n           " + arguments[i]->to_string();
+        stringy += "\n";
+        for (size_t i = 0; i < indentation; i++)
+        {
+          if(i == 0) stringy += indent;
+          else stringy = stringy + "|      ";
+        }
+        stringy = stringy +"├──Argument: " + arguments[i]->to_string();
       }
       
     }
@@ -810,10 +869,17 @@ public:
   virtual Value *codegen() override {};
 
   virtual std::string to_string() const override{
-    std::string stringy = "";
-    stringy = stringy + "\nWHILE STATEMENT:";
-    stringy = stringy + "\nExpression:     " + expr->to_string().c_str();
-    stringy = stringy + "\nStatements:     " + stmt->to_string().c_str();
+    std::string stringy = "\n";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent ;
+      else stringy = stringy + "|      ";
+    }
+    stringy = stringy + "├──While statement: ";
+    stringy = stringy  + expr->to_string().c_str();
+    indentation++;
+    stringy = stringy + stmt->to_string().c_str();
+    indentation--;
     return stringy;
   }
 };
@@ -934,8 +1000,14 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
         errorMessage();     
         break;
     }
-    expressionParser();
-    ArgsListPrimeParser();
+    auto expr = expressionParser();
+    auto args = ArgsListPrimeParser();
+    if(expr) {stdList.push_back(std::move(expr));}
+    int size = (int) args.size();
+    for (size_t i = 0; i < size; i++)
+    {
+      stdList.push_back(std::move(args[i]));
+    }
   }
   else{
     if(CurTok.type != RPAR){
@@ -944,6 +1016,7 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListPrimeParser(){
       return vector;
     }
   }
+  
   return stdList;
 }
 
@@ -957,14 +1030,21 @@ static std::vector<std::unique_ptr<ASTnode>> ArgsListParser(){
     return vector;
   }
 
-  expressionParser();
-  ArgsListPrimeParser();
+  auto expr = expressionParser();
+  auto args = ArgsListPrimeParser();
 
   if(CurTok.type != RPAR){
     line();printf("ERROR: Expected token RPAR ')'");
     errorMessage();   
     return vector;
   }
+  if(expr) {stdList.push_back(std::move(expr));}
+  int size = (int) args.size();
+  for (size_t i = 0; i < size; i++)
+  {
+    stdList.push_back(std::move(args[i]));
+  }
+  
   return stdList;
 }
 
