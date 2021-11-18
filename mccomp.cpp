@@ -431,7 +431,7 @@ class IntASTnode : public ASTnode {
 
 public:
   IntASTnode(TOKEN tok, int val) : Val(val), Tok(tok) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     return std::to_string(Val);
   }
@@ -444,7 +444,7 @@ class floatASTnode : public ASTnode {
 
 public:
   floatASTnode(TOKEN tok, float val) : Val(val), Tok(tok) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     return std::to_string(Val);
   }
@@ -458,7 +458,7 @@ class boolASTnode : public ASTnode {
 
 public:
   boolASTnode(TOKEN tok, bool val) : Val(val), Tok(tok) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     return std::to_string(Val);
   }
@@ -557,7 +557,7 @@ class identASTnode : public ASTnode {
 
 public:
   identASTnode(TOKEN Token, std::string Value) : token(Token), value(Value) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override{
     return value;
   }
@@ -783,7 +783,7 @@ class expressionASTnode : public ASTnode {
 public:
   expressionASTnode(std::unique_ptr<ASTnode> LEFT, TOKEN Operation, std::unique_ptr<ASTnode> RIGHT) 
   : left(std::move(LEFT)), operation(Operation.lexeme), right(std::move(RIGHT)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     bool indentb = false;
     exprbool = true;
@@ -1612,7 +1612,7 @@ static std::vector<std::unique_ptr<parameterASTnode>> parameterListParser(){
 }
 
 
-static std::unique_ptr<typeASTnode> vartypeParser(){
+static std::unique_ptr<typeASTnode> varighttypeParser(){
   if(CurTok.type == INT_TOK || CurTok.type == FLOAT_TOK || CurTok.type == BOOL_TOK){
     TOKEN storage = CurTok;
     getNextToken();
@@ -1666,7 +1666,7 @@ static std::unique_ptr<globalASTnode> localDeclParser(){
     errorMessage();
   }
   else{
-    auto variableType = vartypeParser();
+    auto variableType = varighttypeParser();
     TOKEN store = CurTok;
     if(CurTok.type == IDENT){
       TOKEN store = CurTok;
@@ -1870,7 +1870,7 @@ static std::unique_ptr<whileASTnode> whileParser(){
 static std::unique_ptr<typeASTnode> typeSpecParser(){
   if(CurTok.type != VOID_TOK){
     if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK){
-      return vartypeParser();
+      return varighttypeParser();
     }
     line();printf("ERROR: Missing a declaration type\n");
     return nullptr;
@@ -1895,7 +1895,7 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
     errorMessage();
     return nullptr;
   }
-  auto type = vartypeParser();
+  auto type = varighttypeParser();
   auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
   if(CurTok.type == IDENT){
     getNextToken();
@@ -1953,7 +1953,7 @@ static std::unique_ptr<parameterASTnode> paramParser(){
   // if(CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK){
     
   // }
-  auto variableType = vartypeParser();
+  auto variableType = varighttypeParser();
   if(CurTok.type == IDENT){
     auto identifier = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
     getNextToken();
@@ -2093,7 +2093,7 @@ static std::unique_ptr<externASTnode> externParser(){
   if(CurTok.type == EXTERN){
     getNextToken();
     if(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK || CurTok.type == VOID_TOK){
-      auto varType = std::make_unique<typeASTnode>(CurTok);
+      auto varighttype = std::make_unique<typeASTnode>(CurTok);
       getNextToken();
       if(CurTok.type == IDENT){
         auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
@@ -2113,7 +2113,7 @@ static std::unique_ptr<externASTnode> externParser(){
           line();printf("ERROR: Missing SC ';' for function\n");
           errorMessage();
         }
-        auto returner = std::make_unique<externASTnode>(std::move(varType), std::move(ident), std::move(parameters));
+        auto returner = std::make_unique<externASTnode>(std::move(varighttype), std::move(ident), std::move(parameters));
         getNextToken();
         return std::move(returner);
       }
@@ -2246,6 +2246,133 @@ static std::unique_ptr<ASTnode> parser() {
 static LLVMContext TheContext;
 static IRBuilder<> Builder(TheContext);
 static std::unique_ptr<Module> TheModule;
+static std::map<std::string, AllocaInst*> NamedValues;
+static std::map<std::string, Value*> GlobalNamedValues;
+
+Value *LogErrorV(const char *Str){
+  printf("Code generation error: \n%s\n", Str);
+  return nullptr;
+}
+
+Value *IntASTnode::codegen() {
+  return ConstantInt::get(TheContext, APInt(32, Val));
+}
+
+Value *boolASTnode::codegen(){
+  return ConstantInt::get(TheContext, APInt(1, Val));
+}
+
+Value *floatASTnode::codegen(){
+  return ConstantFP::get(TheContext, APFloat(Val));
+}
+
+Value *identASTnode::codegen(){
+  Value*V = NamedValues[value];
+  if(!V){
+    V = GlobalNamedValues[value];
+    if(!V){
+      std::string s = "Variable "+value+" has not been declared yet";
+      return LogErrorV(s.c_str());
+    }
+  }
+  return Builder.CreateLoad(V, value.c_str());
+}
+
+Value *expressionASTnode::codegen() {
+  Value *L = left->codegen();
+  Value *R = right->codegen();
+  if(!L || !R){
+    return nullptr;
+  }
+  
+  auto lefttype = L->getType();
+  auto righttype = R->getType();
+
+  if(lefttype != righttype){
+    if(lefttype == Type::getInt32Ty(TheContext)){
+      if(righttype == Type::getInt1Ty(TheContext)) {
+        std::string s = "Cannot execute arithmetic operation -"+operation+"- on integer and boolean";
+        return LogErrorV(s.c_str());
+      }
+      if (righttype == Type::getFloatTy(TheContext)) {
+        L = Builder.CreateSIToFP(L, Type::getFloatTy(TheContext), "converted LHS to type FLOAT");
+      }
+    }
+    else if(lefttype == Type::getFloatTy(TheContext)){
+      if(righttype == Type::getInt1Ty(TheContext)) {
+        std::string s = "Cannot execute arithmetic operation -"+operation+"- on float and boolean";
+        return LogErrorV(s.c_str());
+      }
+      if(righttype == Type::getInt32Ty(TheContext)){
+        R = Builder.CreateSIToFP(R, Type::getFloatTy(TheContext), "converted RHS to type FLOAT");
+      }
+    }
+    else if(lefttype == Type::getInt1Ty(TheContext)){
+      if(righttype == Type::getInt32Ty(TheContext)){
+        std::string s = "Cannot execute arithmetic operation -"+operation+"- on integer and boolean";
+        return LogErrorV(s.c_str());
+      }
+      if(righttype == Type::getFloatTy(TheContext)){
+        std::string s = "Cannot execute arithmetic operation -"+operation+"- on float and boolean";
+        return LogErrorV(s.c_str());
+      }
+    }
+  }
+
+  if(lefttype == righttype){
+    if(lefttype == Type::getInt32Ty(TheContext)){
+      if(operation == "+"){
+        return Builder.CreateAdd(L, R, "addtmp");
+      }
+      else if(operation == "-"){
+        return Builder.CreateSub(L, R, "subtmp");
+      }
+      else if(operation == "*"){
+        return Builder.CreateMul(L, R, "multmp");
+      }
+      else if(operation == "/"){
+        return Builder.CreateSDiv(L, R, "dictmp");
+      }
+      else if(operation == "%"){
+        return Builder.CreateSRem(L, R, "remtemp");
+      }
+      else if(operation == "<"){
+        L = Builder.CreateICmpULT(L, R, "cmptemp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == ">"){
+        L = Builder.CreateICmpUGT(L, R, "cmptemp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "<="){
+        L = Builder.CreateICmpULE(L, R, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == ">="){
+        L = Builder.CreateICmpUGE(L, R, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "=="){
+        Value* LF = Builder.CreateSIToFP(L, Type::getFloatTy(TheContext));
+        Value* RF = Builder.CreateSIToFP(R, Type::getFloatTy(TheContext));
+        L = Builder.CreateFCmpUEQ(LF, RF, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "!="){
+        Value* LF = Builder.CreateSIToFP(L, Type::getFloatTy(TheContext));
+        Value* RF = Builder.CreateSIToFP(R, Type::getFloatTy(TheContext));
+        L = Builder.CreateFCmpUNE(LF, RF, "cmptmp");
+        return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
+      }
+      else if(operation == "&&"){
+        return LogErrorV("AND operation can only be applied to 2 boolean values");
+      }
+      else if(operation == "||"){
+        return LogErrorV("AND operation can only be applied to 2 boolean values");
+      }
+    }
+  }
+}
 
 //===----------------------------------------------------------------------===//
 // AST Printer
