@@ -41,6 +41,7 @@ int errorCount = 0;
 int assign = 0;
 int indentation = 0;
 std::string indent = "    ";
+bool isrhsorlhs = false;
 
 std::string getIndent(){
   std::string id = "";
@@ -634,12 +635,41 @@ public:
   ifASTnode(std::unique_ptr<ASTnode> Expr, std::unique_ptr<BlockASTnode> Block, std::unique_ptr<BlockASTnode> ElseBlock) : expr(std::move(Expr)), block(std::move(Block)), elseBlock(std::move(ElseBlock)) {}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    std::string stringy = "\nIF STATEMENT:\n";
-    stringy = stringy +   "\nCONDITION:    " + expr->to_string();
-    stringy = stringy +   "\nBLOCK:        " + block->to_string();
-    if(elseBlock){
-      stringy = stringy + "\nELSE BLOCK:   " + elseBlock->to_string();
+    std::string stringy ="";
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent ;
+      else stringy = stringy + "|      ";
     }
+    stringy += "├──If statement:\n";
+    indentation++;
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent ;
+      else stringy = stringy + "|      ";
+    }
+    stringy = stringy +   "├──Condition: " + expr->to_string();
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent ;
+      else stringy = stringy + "|      ";
+    }
+    stringy = stringy +   "├──Block: \n";
+    indentation++;
+    stringy += block->to_string();
+    indentation--;
+    for (size_t i = 0; i < indentation; i++)
+    {
+      if(i == 0) stringy += indent ;
+      else stringy = stringy + "|      ";
+    }
+    if(elseBlock){
+      stringy = stringy + "├──Else block: \n";
+      indentation++;
+      stringy += elseBlock->to_string();
+      indentation--;
+    }
+    indentation--;
     return stringy;
   }
 };
@@ -655,7 +685,7 @@ public:
   virtual Value *codegen() override {};
 
   virtual std::string to_string() const override {
-    std::string stringy = "\n";
+    std::string stringy = "";
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent;
@@ -676,7 +706,7 @@ public:
       else stringy = stringy + "|      ";
     }
     indentation++;
-    stringy = stringy + "Value: " + expr->to_string();
+    stringy = stringy + "Value: " + expr->to_string() + "\n";
     indentation--;
     indentation--;
     return  stringy;
@@ -726,7 +756,11 @@ public:
   : left(std::move(LEFT)), operation(Operation.lexeme), right(std::move(RIGHT)) {}
   virtual Value *codegen() override {};
   virtual std::string to_string() const override {
-    indentation++;
+    bool indentb = false;
+    if(isrhsorlhs){
+      indentation++;
+      indentb = true;
+    }
     std::string stringy = "\n";
     for (size_t i = 0; i < indentation; i++)
     {
@@ -740,7 +774,9 @@ public:
       if(i == 0) stringy += indent;
       else stringy = stringy + "|      ";
     }
+    isrhsorlhs = true;
     stringy += "├──Left hand side: " + left->to_string() +"\n";
+    isrhsorlhs = false;
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent;
@@ -752,9 +788,11 @@ public:
       if(i == 0) stringy += indent;
       else stringy = stringy + "|      ";
     }
+    isrhsorlhs = true;
     stringy += "├──Right hand side: " + right->to_string() +"\n";
+    isrhsorlhs = false;
     indentation--;
-    indentation--;
+    if(indentb == false) indentation--;
     return stringy;
   }
 };
@@ -791,9 +829,9 @@ public:
           else stringy = stringy + "|      ";
         }
         stringy = stringy +"├──Argument: " + arguments[i]->to_string();
-      }
-      
+      }      
     }
+    stringy+="\n";
     indentation--;
     return stringy;
   }
@@ -869,7 +907,7 @@ public:
   virtual Value *codegen() override {};
 
   virtual std::string to_string() const override{
-    std::string stringy = "\n";
+    std::string stringy = "";
     for (size_t i = 0; i < indentation; i++)
     {
       if(i == 0) stringy += indent ;
