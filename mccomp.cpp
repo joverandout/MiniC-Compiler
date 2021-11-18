@@ -809,7 +809,9 @@ public:
       else stringy = stringy + "|      ";
     }
     isrhsorlhs = true;
+    usestart = false;
     stringy += "├──Left hand side: " + left->to_string() +"\n";
+    usestart = true;
     isrhsorlhs = false;
     for (size_t i = 0; i < indentation; i++)
     {
@@ -824,7 +826,9 @@ public:
     }
     isrhsorlhs = true;
     inrhs++;
+    usestart = false;
     stringy += "├──Right hand side: " + right->to_string();
+    usestart = true;
     inrhs--;
     lineneeded = false;
     isrhsorlhs = false;
@@ -858,7 +862,9 @@ public:
         if(i == 0) stringy += indent;
         else stringy = stringy + "|      ";
       }
+      usestart = false;
       stringy = stringy +"├──Argument: " + arguments[0]->to_string();
+      usestart = true;
       for (size_t i = 1; i < arguments.size(); i++)
       {
         stringy += "\n";
