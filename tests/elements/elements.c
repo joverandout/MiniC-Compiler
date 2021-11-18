@@ -3,5 +3,7 @@ if(x == 4) {
 }
 else {
     int y;
+    int x;
     y = 2;
+    x = 3;
 }

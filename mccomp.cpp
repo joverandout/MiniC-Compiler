@@ -1403,13 +1403,18 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
     return statements;
   }
   if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
-    printf("sasha\n");
     auto st = statementParser();
     if(st){
       statements.push_back(std::move(st));
     }
     if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
-      statementListParser();
+      auto stmts = statementListParser();
+      int size = (int) stmts.size();
+      for (size_t i = 0; i < size; i++)
+      {
+        statements.push_back(std::move(stmts[i]));
+      }
+      
     }
   }
   else{
@@ -1421,7 +1426,6 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
 }
 
 static std::unique_ptr<globalASTnode> localDeclParser(){
-  printf("localDecl\n");
   if(CurTok.type == RBRA) return nullptr;
   if(!(CurTok.type == INT_TOK || CurTok.type == BOOL_TOK || CurTok.type == FLOAT_TOK)){
     line();printf("ERROR: Locally declared variable has no type\n");
@@ -1435,7 +1439,6 @@ static std::unique_ptr<globalASTnode> localDeclParser(){
       getNextToken();
     }
     auto identifier = std::make_unique<identASTnode>(store, store.lexeme);
-    printf("ident made %s\n\n", identifier->to_string().c_str());
     if(CurTok.type == SC){
       getNextToken();
     }
@@ -1445,8 +1448,6 @@ static std::unique_ptr<globalASTnode> localDeclParser(){
       getNextToken();
     }
     if(CurTok.type==INT_TOK || CurTok.type == RBRA || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA ||CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT){
-      printf("HEEHEH");
-      printf("AHAHA%sBOO", identifier->to_string().c_str());
       return std::make_unique<globalASTnode>(std::move(variableType), std::move(identifier));
     }
     
