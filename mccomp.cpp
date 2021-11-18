@@ -1403,9 +1403,13 @@ static std::vector<std::unique_ptr<ASTnode>> statementListParser(){
     return statements;
   }
   if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
-    statementParser();
-    while(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
-      statementParser();
+    printf("sasha\n");
+    auto st = statementParser();
+    if(st){
+      statements.push_back(std::move(st));
+    }
+    if(CurTok.type == INT_LIT || CurTok.type == BOOL_LIT || CurTok.type == FLOAT_LIT || CurTok.type == NOT || CurTok.type == MINUS || CurTok.type == SC || CurTok.type == LPAR || CurTok.type == IDENT || CurTok.type == IF || CurTok.type == RETURN || CurTok.type == WHILE || CurTok.type == LBRA){
+      statementListParser();
     }
   }
   else{
@@ -1510,7 +1514,6 @@ static std::unique_ptr<BlockASTnode> blockParser(){
   else{
     getNextToken();
     auto declarations = localDeclsParser();
-    printf("done!");
     auto statements = statementListParser();
     if(CurTok.type != RBRA){
       line();printf("ERROR: Missing RBRA at end of block, expected to find '}'\n");
@@ -1536,7 +1539,9 @@ static std::unique_ptr<BlockASTnode> elseParser(){
       line();printf("ERROR: missing LBRA '{' after 'ELSE'\n");
       errorMessage();
     }
+    printf("helloblock%s", CurTok.lexeme.c_str());
     auto blockstatement = blockParser();
+    printf("\n\n\n%s\n\n\n", blockstatement->to_string().c_str());
     if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type == EOF_TOK || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA ) {
       return blockstatement;    
     }
@@ -1582,6 +1587,7 @@ static std::unique_ptr<ifASTnode> ifParser(){
       getNextToken();
     }
     auto ifBlock = blockParser();
+    printf("elSEY %s\n", CurTok.lexeme.c_str());
     auto elseStatement = elseParser();
 
     if(CurTok.type==IDENT || CurTok.type==SC || CurTok.type==LBRA || CurTok.type==WHILE || CurTok.type==IF || CurTok.type==RETURN || CurTok.type==MINUS || CurTok.type==NOT || CurTok.type==LPAR || CurTok.type==INT_LIT || CurTok.type==BOOL_LIT || CurTok.type==FLOAT_LIT || CurTok.type==RBRA || CurTok.type == EOF_TOK ) {
