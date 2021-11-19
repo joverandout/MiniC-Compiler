@@ -573,7 +573,7 @@ class globalASTnode : public ASTnode {
 public:
   globalASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Ident)
   : type(std::move(Type)), ident(std::move(Ident)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   int getType() const {
     return type->getType();
   }
@@ -707,7 +707,7 @@ class assignmentASTnode : public ASTnode {
 
 public:
   assignmentASTnode(std::unique_ptr<identASTnode> Ident, std::unique_ptr<ASTnode> Expr) : ident(std::move(Ident)), expr(std::move(Expr)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
 
   virtual std::string to_string() const override {
     std::string stringy = "";
@@ -2267,15 +2267,18 @@ Value *floatASTnode::codegen(){
 }
 
 Value *identASTnode::codegen(){
-  Value*V = NamedValues[value];
-  if(!V){
-    V = GlobalNamedValues[value];
-    if(!V){
-      std::string s = "Variable "+value+" has not been declared yet";
-      return LogErrorV(s.c_str());
+  Value *val = NamedValues[value];
+  if(val){
+    return Builder.CreateLoad(val, value.c_str());
+  }
+  else{
+    val = TheModule->getNamedValue(value);
+    if(!val){
+      std::string error = "Cannot find declaration of variable '" + value + "'";
+      return LogErrorV(error.c_str());
     }
   }
-  return Builder.CreateLoad(V, value.c_str());
+  return Builder.CreateLoad(val, value.c_str());
 }
 
 Value *expressionASTnode::codegen() {
@@ -2582,6 +2585,45 @@ Function *functionASTnode::codegen(){
 
   return f;
 }
+
+Value *assignmentASTnode::codegen(){
+  Value *value = expr->codegen();
+  if(value){
+    Value *variableName = NamedValues[ident->to_string()];
+    if(variableName){
+
+    }
+    else{
+      std::string error = "Cannot assign variable '" + ident->to_string() + "' since it does not exist in the current scope";
+      return LogErrorV(error.c_str());
+    }
+    auto expressionType = value->getType();
+    auto variableType = Builder.CreateLoad(variableName, ident->to_string())->getType();
+
+    Builder.CreateStore(value, variableName);
+    return value;
+  }
+  else{
+    return nullptr;
+  }
+}
+
+Value *globalASTnode::codegen(){
+  if(type->getType() == INT_TOK){
+    return new GlobalVariable(*TheModule, Type::getInt32Ty(TheContext), false, GlobalValue::CommonLinkage, ConstantInt::get(TheContext, APInt(32,0)), ident->to_string());
+  }
+  else if (type->getType() == BOOL_TOK){
+    return new GlobalVariable(*TheModule, Type::getInt1Ty(TheContext), false, GlobalValue::CommonLinkage, ConstantInt::get(TheContext, APInt(1,0)), ident->to_string());
+  }  
+  else if (type->getType() == FLOAT_TOK){
+    return new GlobalVariable(*TheModule, Type::getFloatTy(TheContext), false, GlobalValue::CommonLinkage, ConstantFP::get(TheContext, APFloat((float)0)), ident->to_string());
+  }
+  return nullptr;
+}
+
+
+
+
 
 //===----------------------------------------------------------------------===//
 // AST Printer
