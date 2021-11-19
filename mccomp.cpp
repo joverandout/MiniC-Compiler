@@ -949,7 +949,7 @@ class whileASTnode : public ASTnode{
 
 public:
   whileASTnode(std::unique_ptr<ASTnode> expression, std::unique_ptr<ASTnode> statement) : expr(std::move(expression)), stmt(std::move(statement)){}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
 
   virtual std::string to_string() const override{
     std::string stringy = "";
@@ -2618,6 +2618,35 @@ Value *globalASTnode::codegen(){
   else if (type->getType() == FLOAT_TOK){
     return new GlobalVariable(*TheModule, Type::getFloatTy(TheContext), false, GlobalValue::CommonLinkage, ConstantFP::get(TheContext, APFloat((float)0)), ident->to_string());
   }
+  return nullptr;
+}
+
+
+Value *whileASTnode::codegen(){
+  Function *func = Builder.GetInsertBlock()->getParent();
+  BasicBlock *condition = BasicBlock::Create(TheContext, "condition", func);
+  BasicBlock *loop = BasicBlock::Create(TheContext, "while loop", func);
+  BasicBlock *afterLoop = BasicBlock::Create(TheContext, "after loop", func);
+
+  Builder.CreateBr(condition);
+  Builder.SetInsertPoint(condition);
+  if(!stmt->codegen()){
+    return nullptr;
+  }
+  Value *endCond = expr->codegen();
+  if(!endCond) return nullptr;
+
+  endCond = Builder.CreateFCmpONE(endCond, ConstantFP::get(TheContext, APFloat(0.0)), "loop cond");
+
+  Builder.CreateCondBr(endCond, loop, afterLoop);
+  Builder.SetInsertPoint(loop);
+
+  if(stmt->codegen()){
+    Builder.CreateBr(condition);
+    Builder.SetInsertPoint(afterLoop);
+    return Constant::getNullValue(Type::getFloatTy(TheContext));
+  }
+
   return nullptr;
 }
 
