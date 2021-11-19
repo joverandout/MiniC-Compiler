@@ -889,7 +889,7 @@ class externASTnode : public ASTnode {
 public:
   externASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Identifier, std::vector<std::unique_ptr<parameterASTnode>> Parameters)
   : type(std::move(Type)), identifer(std::move(Identifier)), parameters(std::move(Parameters)) {}
-  virtual Value *codegen() override {};
+  virtual Function *codegen() override;
 
   int getType() {
     return type->getType();
@@ -2499,6 +2499,55 @@ Value *functionCall::codegen() {
     }
   }
   return Builder.CreateCall(callerFunc, Argss, "calltmp");  
+}
+
+Function *externASTnode::codegen(){
+  TOKEN token;
+  int type2;
+  std::vector<Type*> parameterTypes;
+
+  if(parameters.size() >0){
+    for (int i = 0; i < parameters.size(); i++)
+    {
+      type2 = parameters.at(i)->getType();
+      if(type2 == INT_TOK){
+        parameterTypes.push_back(Type::getInt32Ty(TheContext));
+      }
+      else if(type2 == BOOL_TOK){
+        parameterTypes.push_back(Type::getInt1Ty(TheContext));
+      }
+      else if(type2 == FLOAT_TOK){
+        parameterTypes.push_back(Type::getFloatTy(TheContext));
+      }
+    }
+  }
+    Type* returnt;
+    type2 = type ->getType();
+    if(type2 == INT_TOK){
+      returnt = Type::getInt32Ty(TheContext);
+    }
+    if(type2 == FLOAT_TOK){
+      returnt = Type::getFloatTy(TheContext);
+    }
+    if(type2 == BOOL_TOK){
+      returnt = Type::getInt1Ty(TheContext);
+    }
+    if(type2 == VOID_TOK){
+      returnt = Type::getVoidTy(TheContext);
+    }
+    else{
+      return nullptr;
+    }
+
+    FunctionType *FunctionType = FunctionType::get(returnt, parameterTypes, false);
+    Function *F = Function::Create(FunctionType, Function::ExternalLinkage, getName(), TheModule.get());
+
+    unsigned Idx = 0;
+    for (auto &Arg: F->args()){
+      Arg.setName(parameters.at(Idx)->getName());
+      Idx++;
+    }
+  return F;
 }
 
 //===----------------------------------------------------------------------===//
