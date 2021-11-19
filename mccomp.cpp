@@ -652,7 +652,7 @@ class ifASTnode : public ASTnode{
 
 public:
   ifASTnode(std::unique_ptr<ASTnode> Expr, std::unique_ptr<BlockASTnode> Block, std::unique_ptr<BlockASTnode> ElseBlock) : expr(std::move(Expr)), block(std::move(Block)), elseBlock(std::move(ElseBlock)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string stringy ="";
     for (size_t i = 0; i < indentation; i++)
@@ -2619,6 +2619,92 @@ Value *globalASTnode::codegen(){
     return new GlobalVariable(*TheModule, Type::getFloatTy(TheContext), false, GlobalValue::CommonLinkage, ConstantFP::get(TheContext, APFloat((float)0)), ident->to_string());
   }
   return nullptr;
+}
+
+
+Value *ifASTnode::codegen(){
+  Value *condition = expr->codegen();
+
+  if(condition){
+    if(condition->getType() == Type::getInt1Ty(TheContext)){
+      condition= Builder.CreateSIToFP(condition, Type::getFloatTy(TheContext), "boolean->float");
+    }
+    condition = Builder.CreateFCmpONE(condition, ConstantFP::get(TheContext, APFloat(0.0)), "ifcondition");
+    
+
+    Function *function = Builder.GetInsertBlock()->getParent();
+
+    BasicBlock *then = BasicBlock::Create(TheContext, "then", function);
+    BasicBlock *elseBB = BasicBlock::Create(TheContext, "else bock");
+    BasicBlock *mergeBB = BasicBlock::Create(TheContext, "after if block");
+    if(!elseBlock){
+      Builder.CreateCondBr(condition, then, mergeBB);
+      Builder.SetInsertPoint(then);
+      Value *thenVal = block->codegen();
+      if(thenVal){
+        Builder.CreateBr(mergeBB);
+        then = Builder.GetInsertBlock();
+        function->getBasicBlockList().push_back(mergeBB);
+        Builder.SetInsertPoint(mergeBB);
+        return condition;
+      }
+      else{
+        return nullptr;
+      }
+    }
+    else{
+      Builder.CreateCondBr(condition, then, elseBB);
+      Builder.SetInsertPoint(then);
+
+      Value *thenValue = block->codegen();
+      if(!thenValue){
+        return nullptr;
+      }
+
+
+      Builder.CreateBr(mergeBB);
+      then = Builder.GetInsertBlock();
+
+      function->getBasicBlockList().push_back(elseBB);
+      Builder.SetInsertPoint(elseBB);
+
+      Value *elseValue = elseBlock->codegen();
+
+      if(!elseValue){
+        return nullptr;
+      }
+
+      Builder.CreateBr(mergeBB);
+
+      elseBB = Builder.GetInsertBlock();
+
+      function->getBasicBlockList().push_back(mergeBB);
+      Builder.SetInsertPoint(mergeBB);
+
+      PHINode *pnode;
+      if(thenValue->getType() == Type::getInt32Ty(TheContext)){
+        pnode = Builder.CreatePHI(Type::getInt32Ty(TheContext), 2, "then tmp");
+      }
+      else if(thenValue->getType() == Type::getInt1Ty(TheContext)){
+        pnode = Builder.CreatePHI(Type::getInt1Ty(TheContext), 2, "then tmp");
+      }
+      else if(thenValue->getType() == Type::getFloatTy(TheContext)){
+        pnode = Builder.CreatePHI(Type::getFloatTy(TheContext), 2, "then tmp");
+      }
+      else{
+        std::string stringy = "Unable to create PHINode for if statement '" +expr->to_string() + "'"; 
+        return LogErrorV(stringy.c_str());
+      }
+
+      pnode->addIncoming(thenValue, then);
+      pnode->addIncoming(elseValue, elseBB);
+      return pnode;
+    }
+    
+  }
+  else{
+    return nullptr;
+  }
 }
 
 
