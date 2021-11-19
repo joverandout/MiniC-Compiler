@@ -923,7 +923,7 @@ class functionASTnode : public ASTnode{
   std::unique_ptr<BlockASTnode> funcBody;
 public:
   functionASTnode(std::unique_ptr<externASTnode> Function, std::unique_ptr<BlockASTnode> FuncBody) : function(std::move(Function)), funcBody(std::move(FuncBody)) {}
-  virtual Function *codegen() override {};
+  virtual Function *codegen() override;
 
   virtual std::string to_string() const override{
     std::string stringy = "function: ";
@@ -2548,6 +2548,39 @@ Function *externASTnode::codegen(){
       Idx++;
     }
   return F;
+}
+
+
+Function *functionASTnode::codegen(){
+  Function *f = TheModule -> getFunction(function->getName());
+
+  if(!f) f = function->codegen();
+  if (!f) return nullptr;
+
+  if(!f->empty()){
+    std::string stringy = "Function '" + function->getName() +"' cannot be redefined";
+    return (Function*)LogErrorV(stringy.c_str());
+  }
+
+  BasicBlock *basicblock = BasicBlock::Create(TheContext, "block", f);
+  Builder.SetInsertPoint(basicblock);
+
+
+  NamedValues.clear();
+  for (auto &argument : f->args()){
+    IRBuilder<> Tmp(&f->getEntryBlock(), f->getEntryBlock().begin());
+    AllocaInst *Alloca = Tmp.CreateAlloca(argument.getType(), 0, argument.getName());
+    Builder.CreateStore(&argument, Alloca);
+    std::string s = std::string(argument.getName());
+    NamedValues[s] = Alloca;
+  }
+  
+  Value *returner  = funcBody->codegen();
+  Builder.CreateRet(returner);
+
+  verifyFunction(*f);
+
+  return f;
 }
 
 //===----------------------------------------------------------------------===//

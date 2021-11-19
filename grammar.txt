@@ -22,11 +22,8 @@ param        := var_type IDENT
 var_type     := "int"
 	            | "float"
 	            | "bool"
-
-
 local_decls  := local_decl local_decls
 	            | epsilon
-
 block        := "{" local_decls stmt_list "}"
 stmt         := expr_stmt
 				| block
