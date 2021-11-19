@@ -527,7 +527,7 @@ public:
   returnASTnode(std::unique_ptr<ASTnode> Expression) : expression(std::move(Expression)){}
   returnASTnode(){}
 
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string stringy = "";
     for (size_t i = 0; i < indentation; i++)
@@ -2617,6 +2617,13 @@ Value *globalASTnode::codegen(){
   }  
   else if (type->getType() == FLOAT_TOK){
     return new GlobalVariable(*TheModule, Type::getFloatTy(TheContext), false, GlobalValue::CommonLinkage, ConstantFP::get(TheContext, APFloat((float)0)), ident->to_string());
+  }
+  return nullptr;
+}
+
+Value *returnASTnode::codegen() {
+  if(expression){
+    return expression->codegen();
   }
   return nullptr;
 }
