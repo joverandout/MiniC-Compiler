@@ -482,7 +482,9 @@ class typeASTnode : public ASTnode{
 
 public:
   typeASTnode(TOKEN t) : token(t){}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override {
+    return nullptr;
+  };
   virtual std::string to_string() const override{
     std::string returner = "";
     switch (token.type)
@@ -747,7 +749,7 @@ class parameterASTnode : public ASTnode {
   std::unique_ptr<identASTnode> identifier;
 public:
   parameterASTnode(std::unique_ptr<typeASTnode> Type, std::unique_ptr<identASTnode> Identifier) : type(std::move(Type)), identifier(std::move(Identifier)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     std::string stringy = "";
     stringy = stringy + "Variable: ";
@@ -2551,6 +2553,19 @@ Function *externASTnode::codegen(){
       Idx++;
     }
   return F;
+}
+
+Value *parameterASTnode::codegen(){
+  if(getType() == INT_TOK){
+    return new GlobalVariable(*TheModule, Type::getInt32Ty(TheContext),false, GlobalValue::CommonLinkage, ConstantInt::get(TheContext, APInt(32,0)), identifier->to_string());
+  }
+  else if(getType() == BOOL_TOK){
+    return new GlobalVariable(*TheModule, Type::getInt1Ty(TheContext),false, GlobalValue::CommonLinkage, ConstantInt::get(TheContext, APInt(1,0)), identifier->to_string());
+  }
+  else if(getType() == FLOAT_TOK){
+    return new GlobalVariable(*TheModule, Type::getFloatTy(TheContext),false, GlobalValue::CommonLinkage, ConstantFP::get(TheContext, APFloat(0.0)), identifier->to_string());
+  }
+  return nullptr;
 }
 
 
