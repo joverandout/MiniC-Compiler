@@ -471,7 +471,7 @@ class notAndNegativeASTnode : public ASTnode {
   std::unique_ptr<ASTnode> expression;
 public:
   notAndNegativeASTnode(char Prefix, TOKEN Token, std::unique_ptr<ASTnode> Expression) : prefix(Prefix), token(Token), expression(std::move(Expression)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {
     return "\nPREFIX: " + std::string(1, prefix) + "\nNAME: " + name;
   }
@@ -2628,7 +2628,6 @@ Value *returnASTnode::codegen() {
   return nullptr;
 }
 
-
 Value *ifASTnode::codegen(){
   Value *condition = expr->codegen();
 
@@ -2714,7 +2713,6 @@ Value *ifASTnode::codegen(){
   }
 }
 
-
 Value *whileASTnode::codegen(){
   Function *func = Builder.GetInsertBlock()->getParent();
   BasicBlock *condition = BasicBlock::Create(TheContext, "condition", func);
@@ -2741,6 +2739,41 @@ Value *whileASTnode::codegen(){
   }
 
   return nullptr;
+}
+
+Value *notAndNegativeASTnode::codegen(){
+  Value *value = expression->codegen();
+
+  if(value){
+    if(prefix == '!'){
+      if(value->getType() == Type::getInt32Ty(TheContext)){
+        return LogErrorV("'!' operation cannot be applied to type 'int'");
+      }
+      else if(value->getType() == Type::getInt1Ty(TheContext)){
+        return Builder.CreateNot(value, "not temp");
+      }
+      else if(value->getType() == Type::getFloatTy(TheContext)){
+        return LogErrorV("'!' operation cannot be applied to type 'float'");
+      }
+    }
+    else if(prefix == '-'){
+      if(value->getType() == Type::getInt32Ty(TheContext)){
+        return Builder.CreateFPToSI(Builder.CreateFNeg(Builder.CreateSIToFP(value, Type::getFloatTy(TheContext), "int->float"), "neg temp"), Type::getInt32Ty(TheContext), "int->float");
+      }
+      else if(value->getType() == Type::getInt1Ty(TheContext)){
+        return LogErrorV("'-' operation cannot be applied to type 'bool'");
+      }
+      else if(value->getType() == Type::getFloatTy(TheContext)){
+        return Builder.CreateFNeg(value, "neg temp");
+      }
+    }
+    else{
+      return LogErrorV("Expected either '-' or '!' all other unary operators are invalid");
+    }
+  }
+  else{
+    return nullptr;
+  }
 }
 
 
