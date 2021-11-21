@@ -1206,6 +1206,8 @@ static std::unique_ptr<ASTnode> ElementParser(){
   else if(CurTok.type == LPAR){
     getNextToken();
     auto expression = expressionParser(); 
+    printf(expression->to_string().c_str());
+    printf("\n\n");
     getNextToken();
     if(expression != nullptr){
       getNextToken();
@@ -1467,8 +1469,8 @@ static std::unique_ptr<ASTnode> expressionStatementParser(){
       //printf("%s - %d\n", CurTok.lexeme.c_str(), CurTok.type);
     }
     else{
-      line();printf("ERROR: No semi colon at line end, instead Token ");
-      printf(" was encountered rather than ';' as expected.\n");
+      std::string error = "ERROR: No semi colon at line end, instead Token '"+CurTok.lexeme+"' was encountered rather than ';' as expected.\n";
+      line();printf(error.c_str());
       errorMessage();  
       getNextToken(); 
     }
@@ -2323,7 +2325,8 @@ Value *expressionASTnode::codegen() {
       }
     }
   }
-
+  lefttype = L->getType();
+  righttype = R->getType();
   if(lefttype == righttype){
     if(lefttype == Type::getInt32Ty(TheContext)){
       if(operation == "+"){
@@ -2512,12 +2515,12 @@ Function *externASTnode::codegen(){
   std::vector<Type*> parameterTypes;
 
   if(parameters.size() >0){
-    printf("int x\n");
+    //printf("int x\n");
     for (int i = 0; i < parameters.size(); i++)
     {
       type2 = parameters.at(i)->getType();
-      printf("\ntype2 = %s\n", std::to_string(type2).c_str());
-      printf("name2 = %s\n", parameters.at(i)->getName().c_str());
+      //printf("\ntype2 = %s\n", std::to_string(type2).c_str());
+      //printf("name2 = %s\n", parameters.at(i)->getName().c_str());
       if(type2 == INT_TOK){
         parameterTypes.push_back(Type::getInt32Ty(TheContext));
       }
@@ -2553,7 +2556,7 @@ Function *externASTnode::codegen(){
   unsigned Idx = 0;
   for (auto &Arg: F->args()){
     Arg.setName(parameters.at(Idx)->getName());
-    printf("\n parameter name %s\n", parameters.at(Idx)->getName().c_str());
+    //printf("\n parameter name %s\n", parameters.at(Idx)->getName().c_str());
     Idx++;
   }
 
@@ -2653,10 +2656,11 @@ Value *ifASTnode::codegen(){
 
   if(condition){
     if(condition->getType() == Type::getInt1Ty(TheContext)){
-      condition= Builder.CreateSIToFP(condition, Type::getFloatTy(TheContext), "boolean->float");
+      condition= Builder.CreateICmpNE(condition, ConstantInt::get(TheContext, APInt(1, 0, false)), "ifconditionS");
     }
-    condition = Builder.CreateFCmpONE(condition, ConstantFP::get(TheContext, APFloat(0.0)), "ifcondition");
-    
+    else{
+      condition = Builder.CreateFCmpONE(condition, ConstantFP::get(TheContext, APFloat(0.0)), "ifcondition");
+    }
 
     Function *function = Builder.GetInsertBlock()->getParent();
 
@@ -2741,9 +2745,7 @@ Value *whileASTnode::codegen(){
 
   Builder.CreateBr(condition);
   Builder.SetInsertPoint(condition);
-  if(!stmt->codegen()){
-    return nullptr;
-  }
+
   Value *endCond = expr->codegen();
   if(!endCond) return nullptr;
 
@@ -2908,10 +2910,10 @@ int main(int argc, char **argv) {
 
 
   // Run the parser now.
-  parser();
+  //parser();
   fprintf(stderr, "Parsing Finished\n");
 
-  outs() << *graphic << '\n';
+  //outs() << *graphic << '\n';
 
   //********************* Start printing final IR **************************
   // Print out all of the generated code into a file called output.ll
@@ -2926,9 +2928,9 @@ int main(int argc, char **argv) {
     errs() << "Could not open file: " << EC.message();
     return 1;
   }
-  std::cout << "\n---------------IR--------------" << '\n';
-  TheModule->print(errs(), nullptr); // print IR to terminal
-  std::cout << "\n---------------IR--------------" << std::endl;
+  // std::cout << "\n---------------IR--------------" << '\n';
+  // TheModule->print(errs(), nullptr); // print IR to terminal
+  // std::cout << "\n---------------IR--------------" << std::endl;
   TheModule->print(dest, nullptr);
   //********************* End printing final IR ****************************
 

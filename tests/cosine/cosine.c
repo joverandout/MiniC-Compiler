@@ -22,7 +22,7 @@ float cosine (float x) {
     cos = cos + alt * term;
     alt = -alt;
     n = n + 2;
-    
+    print_float(term);
   }
 
   print_float(cos);

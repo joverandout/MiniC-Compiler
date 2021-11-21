@@ -1,7 +1,7 @@
 
 // MiniC program to compute the fibonachi numbers
 
-extern int print_int(int X, bool y);
+extern int print_int(int X);
 
 int fibonacci(int n)
 {
