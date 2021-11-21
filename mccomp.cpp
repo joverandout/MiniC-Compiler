@@ -1206,18 +1206,42 @@ static std::unique_ptr<ASTnode> ElementParser(){
   else if(CurTok.type == LPAR){
     getNextToken();
     auto expression = expressionParser(); 
-    printf(expression->to_string().c_str());
-    printf("\n\n");
-    printf("1. %s", CurTok.lexeme.c_str());
+    //printf(expression->to_string().c_str());
+    //printf("\n\n");
+    //printf("1. %s", CurTok.lexeme.c_str());
 
     // printf("\n");
     // printf("2. %s", CurTok.lexeme.c_str());
     if(expression != nullptr){
       getNextToken();
-      printf("\n");
-      printf("3. %s\n\n", CurTok.lexeme.c_str());
+      //printf("\n");
+      //printf("3. %s\n\n", CurTok.lexeme.c_str());
       return std::move(expression);
     }
+  }
+  else{
+    line();
+    //printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
+    errorMessage(); 
+  }
+  return nullptr;
+}
+
+
+static std::unique_ptr<ASTnode> factorPrimeParser(std::unique_ptr<ASTnode> LHS){
+  int t = CurTok.type;
+  TOKEN ooperator = CurTok;
+  if((t==ASTERIX) || (t==DIV) || (t==MOD)) {
+    getNextToken();
+    auto element = ElementParser();
+    if(element != nullptr){
+      auto node = std::make_unique<expressionASTnode>(std::move(LHS), ooperator, std::move(element));
+      auto factorPrime = factorPrimeParser(std::move(node));
+      return factorPrime;
+    }
+  }
+  else if(CurTok.type == PLUS || CurTok.type == MINUS || CurTok.type == LE || CurTok.type == LT || CurTok.type == GE || CurTok.type == GT || CurTok.type == EQ || CurTok.type == NE || CurTok.type == OR || CurTok.type == AND || CurTok.type == SC || CurTok.type == RPAR || CurTok.type == COMMA || CurTok.type == EOF_TOK || CurTok.type == EOF){
+    return std::move(LHS);
   }
   else{
     line();
@@ -1227,30 +1251,13 @@ static std::unique_ptr<ASTnode> ElementParser(){
   return nullptr;
 }
 
-
 static std::unique_ptr<ASTnode> factorParser(){
-  if(curTokType(CurTok)){
-    auto element = ElementParser();
-    int t = CurTok.type;
-    TOKEN ooperator = CurTok;
-    if((t==ASTERIX) || (t==DIV) || (t==MOD)) {
-      getNextToken();
-      auto factor = factorParser();
-      if(factor != nullptr && element != nullptr){
-        return std::move(std::make_unique<expressionASTnode>(std::move(element), ooperator, std::move(factor)));
-      }
-    }
-    else{
-      if(element) return element;
-    }
-  }
-  else{
-    line();
-    printf("ERROR. Missing element -> Expected a literal, variable, identity, '(', '!', or '-'\n");
-    errorMessage(); 
+  auto LHS = ElementParser();
+  if(LHS){
+    auto factorPrime = factorPrimeParser(std::move(LHS));
+    return factorPrime;
   }
   return nullptr;
-  
 }
 
 static std::unique_ptr<ASTnode> plusOrMinus(){
@@ -1258,27 +1265,20 @@ static std::unique_ptr<ASTnode> plusOrMinus(){
   return subExprParser();
 }
 
-static std::unique_ptr<ASTnode> subExprParser(){
-  if(curTokType(CurTok)){
-    auto facotr = factorParser();
-    TOKEN operatfor = CurTok;
-    if(CurTok.type == PLUS){
-      auto operand = plusOrMinus();
-      if(facotr != nullptr){
-        if(operand != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(facotr), operatfor, std::move(operand)));
-        }
-      }
+static std::unique_ptr<ASTnode> subExprPrimeParser(std::unique_ptr<ASTnode> LHS){
+  TOKEN operatfor = CurTok;
+  int op = CurTok.type;
+  if(CurTok.type == PLUS || CurTok.type ==  MINUS){
+    getNextToken();
+    auto RHS = factorParser();
+    if(RHS){
+      auto ret = std::make_unique<expressionASTnode>(std::move(LHS), operatfor, std::move(RHS));
+      auto subexprPrime = subExprPrimeParser(std::move(ret));
+      return subexprPrime;
     }
-    if(CurTok.type ==  MINUS){
-      auto operand = plusOrMinus();
-      if(facotr != nullptr){
-        if(operand != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(facotr), operatfor, std::move(operand)));
-        }
-      }
-    }
-    if (facotr) return facotr;
+  }
+  else if(CurTok.type == LE || CurTok.type == LT || CurTok.type == GE || CurTok.type == GT || CurTok.type == EQ || CurTok.type == NE || CurTok.type == OR || CurTok.type == AND || CurTok.type == SC|| CurTok.type == RPAR || CurTok.type == COMMA || CurTok.type == EOF || CurTok.type ==EOF_TOK){
+    if (LHS) return LHS;
   }
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
@@ -1287,74 +1287,60 @@ static std::unique_ptr<ASTnode> subExprParser(){
   }
   return nullptr;
 }
+
+static std::unique_ptr<ASTnode> subExprParser(){
+  auto LHS = factorParser();
+  if(LHS){
+    auto subExprPrime = subExprPrimeParser(std::move(LHS));
+    return subExprPrime;
+  }
+  return nullptr;
+}
+
+static std::unique_ptr<ASTnode> relationalPrimeParser(std::unique_ptr<ASTnode> LHS){
+  TOKEN comp = CurTok;
+  if(CurTok.type == LE || CurTok.type == LT || CurTok.type == GT || CurTok.type == GE){
+    getNextToken();
+    auto sub = subExprParser();
+    if(sub != nullptr){
+      auto node = std::make_unique<expressionASTnode>(std::move(LHS), comp, std::move(sub));
+      return relationalPrimeParser(std::move(node));
+    }
+  }
+  else if(CurTok.type == EQ || CurTok.type == NE || CurTok.type == OR || CurTok.type == AND || CurTok.type == SC|| CurTok.type == RPAR || CurTok.type == COMMA || CurTok.type == EOF || CurTok.type ==EOF_TOK){
+     if(LHS != nullptr) return LHS;
+   }
+  else{
+    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
+    errorMessage();
+    getNextToken();
+  }
+  return nullptr;
+}
+
 
 static std::unique_ptr<ASTnode> relationalParser(){
-  if(curTokType(CurTok)){
-    auto sub = subExprParser();
-    TOKEN comp = CurTok;
-    if(CurTok.type == LE){
-      getNextToken();
-      auto rel = relationalParser();
-      if(sub != nullptr){
-        if(rel != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
-        }
-      }
-    }
-    else if(CurTok.type == LT){
-      getNextToken();
-      auto rel = relationalParser();
-      if(sub != nullptr){
-        if(rel != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
-        }
-      }
-    }
-    else if(CurTok.type == GT){
-      getNextToken();
-      auto rel = relationalParser();
-      if(sub != nullptr){
-        if(rel != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
-        }
-      }
-    }
-    else if(CurTok.type == GE){
-      getNextToken();
-      auto rel = relationalParser();
-      if(sub != nullptr){
-        if(rel != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(sub), comp, std::move(rel)));
-        }
-      }
-    }
-   else{
-     if(sub != nullptr) return sub;
-   }
-  }
-  else{
-    line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
-    errorMessage();
-    getNextToken();
+  auto sub = subExprParser();
+  if (sub){
+    auto relational_prime = relationalPrimeParser(std::move(sub));
+    return relational_prime;
   }
   return nullptr;
 }
 
-static std::unique_ptr<ASTnode> equivalenceParser(){
-  if(curTokType(CurTok)){
+
+static std::unique_ptr<ASTnode> equivalencePrimeParser(std::unique_ptr<ASTnode> LHS){
+  //printf("\n%s\n", rel->to_string().c_str());  
+  TOKEN eqne = CurTok;
+  if(CurTok.type == EQ || CurTok.type == NE){
+    getNextToken();
     auto rel = relationalParser(); 
-    //printf("\n%s\n", rel->to_string().c_str());  
-    TOKEN eqne = CurTok;
-    if(CurTok.type == EQ || CurTok.type == NE){
-      getNextToken();
-      auto eq = equivalenceParser();
-      if(eq != nullptr && rel != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(rel), eqne, std::move(eq)));
-      }
+    if(rel != nullptr){
+        return std::move(std::make_unique<expressionASTnode>(std::move(LHS), eqne, std::move(rel)));
     }
-    else{
-      if(rel != nullptr){return rel;}
-    }
+  }
+  else if(CurTok.type == OR || CurTok.type == AND || CurTok.type == SC|| CurTok.type == RPAR || CurTok.type == COMMA || CurTok.type == EOF || CurTok.type ==EOF_TOK){
+    if(LHS != nullptr){return LHS;}
   }
   else{
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.");
@@ -1364,22 +1350,31 @@ static std::unique_ptr<ASTnode> equivalenceParser(){
   return nullptr;
 }
 
-static std::unique_ptr<ASTnode> termParser(){
-  if(curTokType(CurTok)){
-    auto eq = equivalenceParser();
-    TOKEN storeCurrent =  CurTok;
-    if (CurTok.type == AND){
-      getNextToken();
-      auto term = termParser();
-      if(term != nullptr){
-        if(eq != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(eq), storeCurrent, std::move(term)));
-        }
-      }
-    }
-    else{
-      if(eq != nullptr) return eq;
-    }
+static std::unique_ptr<ASTnode> equivalenceParser(){
+  auto rel = relationalParser();
+  if(rel){
+    auto equivalenceprime = equivalencePrimeParser(std::move(rel));
+    return equivalenceprime;
+  }
+  return nullptr;
+}
+
+static std::unique_ptr<ASTnode> termPrimeParser(std::unique_ptr<ASTnode> LHS){
+  TOKEN storeCurrent =  CurTok;
+  if (CurTok.type == AND){
+    // getNextToken();
+    // auto term = termParser();
+    // if(term != nullptr){
+    //   if(eq != nullptr){
+    //     return std::move(std::make_unique<expressionASTnode>(std::move(term), storeCurrent, std::move(eq)));
+    //   }
+    auto RHS = equivalenceParser();
+    auto node = std::make_unique<expressionASTnode>(std::move(LHS), storeCurrent, std::move(RHS));
+    return termPrimeParser(std::move(node));
+    //}
+  }
+  else if(CurTok.type == OR || CurTok.type == SC|| CurTok.type == RPAR || CurTok.type == COMMA || CurTok.type == EOF || CurTok.type ==EOF_TOK){
+    if(LHS != nullptr) return LHS;
   }
   else if(!AndTerm()){
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
@@ -1393,22 +1388,27 @@ static std::unique_ptr<ASTnode> termParser(){
   return nullptr;
 }
 
-static std::unique_ptr<ASTnode> rvalParser(){
-  if(curTokType(CurTok)){
-    auto term = termParser();
+std::unique_ptr<ASTnode> termParser(){
+  auto equivalence = equivalenceParser();
+  if(equivalence){
+    auto termPrime = termPrimeParser(std::move(equivalence));
+    return termPrime;
+  }
+  return nullptr;
+}
+
+
+static std::unique_ptr<ASTnode> rvalprimeParser(std::unique_ptr<ASTnode> LHS){
+  if(CurTok.type == OR){
     TOKEN storeCurrent = CurTok;
-    if(CurTok.type == OR){
-      getNextToken();
-      auto rval = rvalParser();
-      if(term != nullptr){
-        if(rval != nullptr){
-          return std::move(std::make_unique<expressionASTnode>(std::move(term), storeCurrent, std::move(rval)));
-        }
-      }
+    getNextToken();
+    auto RHS = termParser();
+    if(RHS != nullptr){
+      return std::move(std::make_unique<expressionASTnode>(std::move(LHS), storeCurrent, std::move(RHS)));
     }
-    else{
-      if(term != nullptr) return term;
-    }
+  }
+  else if(CurTok.type == SC|| CurTok.type == RPAR || CurTok.type == COMMA || CurTok.type == EOF || CurTok.type ==EOF_TOK){
+    if(LHS != nullptr) return LHS;
   }
   else if(!OrTerm()){
     line();printf("ERROR: Missing or invalid AND, OR, RPAR, an identifier, SC, COMMA, RPAR, MINUS, NOT, LPAR or a literal.\n");
@@ -1419,6 +1419,15 @@ static std::unique_ptr<ASTnode> rvalParser(){
   else{
     line();printf("ERROR: Missing rval -> Expected a literal, variable, identity, '(', '!', or '-' or '||'\n"); 
     errorMessage();   
+  }
+  return nullptr;
+}
+
+
+static std::unique_ptr<ASTnode> rvalParser(){
+  auto LHS = termParser();
+  if(LHS){
+    return std::move(rvalprimeParser(std::move(LHS)));
   }
   return nullptr;
 }
@@ -2905,7 +2914,7 @@ int main(int argc, char **argv) {
   //   getNextToken();
   // }
   getNextToken();
-  static std::unique_ptr<ASTnode> graphic = expressionParser();
+  static std::unique_ptr<ASTnode> graphic = parser();
   //
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
@@ -2920,7 +2929,7 @@ int main(int argc, char **argv) {
   //parser();
   fprintf(stderr, "Parsing Finished\n");
 
-  //outs() << *graphic << '\n';
+  outs() << *graphic << '\n';
 
   //********************* Start printing final IR **************************
   // Print out all of the generated code into a file called output.ll
