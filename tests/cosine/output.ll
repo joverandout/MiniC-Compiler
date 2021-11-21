@@ -36,35 +36,37 @@ condition:                                        ; preds = %"while loop", %bloc
   %term9 = load float, float* %term, align 4
   %x10 = load float, float* %x1, align 4
   %x11 = load float, float* %x1, align 4
-  %n12 = load float, float* %n, align 4
+  %multmp = fmul float %x10, %x11
+  %multmp12 = fmul float %term9, %multmp
   %n13 = load float, float* %n, align 4
-  %addtmp = fadd float %n13, 1.000000e+00
-  %dictmp = fdiv float %n12, %addtmp
-  %dictmp14 = fdiv float %x11, %dictmp
-  %multmp = fmul float %x10, %dictmp14
-  %multmp15 = fmul float %term9, %multmp
+  %dictmp = fdiv float %multmp12, %n13
+  %n14 = load float, float* %n, align 4
+  %addtmp = fadd float %n14, 1.000000e+00
+  %dictmp15 = fdiv float %dictmp, %addtmp
   %term16 = load float, float* %term, align 4
-  store float %multmp15, float* %term, align 4
+  store float %dictmp15, float* %term, align 4
   %cos17 = load float, float* %cos, align 4
   %alt18 = load float, float* %alt, align 4
   %term19 = load float, float* %term, align 4
   %multmp20 = fmul float %alt18, %term19
   %addtmp21 = fadd float %cos17, %multmp20
-  %alt22 = load float, float* %alt, align 4
-  %"neg temp" = fneg float %alt22
+  %cos22 = load float, float* %cos, align 4
+  store float %addtmp21, float* %cos, align 4
   %alt23 = load float, float* %alt, align 4
+  %"neg temp" = fneg float %alt23
+  %alt24 = load float, float* %alt, align 4
   store float %"neg temp", float* %alt, align 4
-  %n24 = load float, float* %n, align 4
-  %addtmp25 = fadd float %n24, 2.000000e+00
-  %n26 = load float, float* %n, align 4
-  store float %addtmp25, float* %n, align 4
-  %term27 = load float, float* %term, align 4
-  %calltmp = call float @print_float(float %term27)
+  %n25 = load float, float* %n, align 4
+  %addtmp26 = fadd float %n25, 2.000000e+00
+  %n27 = load float, float* %n, align 4
+  store float %addtmp26, float* %n, align 4
+  %term28 = load float, float* %term, align 4
+  %calltmp = call float @print_float(float %term28)
   br label %condition
 
 "after loop":                                     ; preds = %condition
-  %cos28 = load float, float* %cos, align 4
-  %calltmp29 = call float @print_float(float %cos28)
-  %cos30 = load float, float* %cos, align 4
-  ret float %cos30
+  %cos29 = load float, float* %cos, align 4
+  %calltmp30 = call float @print_float(float %cos29)
+  %cos31 = load float, float* %cos, align 4
+  ret float %cos31
 }

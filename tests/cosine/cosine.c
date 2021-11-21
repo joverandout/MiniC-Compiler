@@ -27,5 +27,4 @@ float cosine (float x) {
 
   print_float(cos);
   return cos;
-  
 }
