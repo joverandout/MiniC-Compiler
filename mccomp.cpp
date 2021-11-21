@@ -1208,9 +1208,14 @@ static std::unique_ptr<ASTnode> ElementParser(){
     auto expression = expressionParser(); 
     printf(expression->to_string().c_str());
     printf("\n\n");
-    getNextToken();
+    printf("1. %s", CurTok.lexeme.c_str());
+
+    // printf("\n");
+    // printf("2. %s", CurTok.lexeme.c_str());
     if(expression != nullptr){
       getNextToken();
+      printf("\n");
+      printf("3. %s\n\n", CurTok.lexeme.c_str());
       return std::move(expression);
     }
   }
@@ -2461,10 +2466,12 @@ Value *expressionASTnode::codegen() {
         return Builder.CreateUIToFP(L, Type::getDoubleTy(TheContext),"booltmp");
       }
       else if(operation == "&&"){
-        return Builder.CreateAnd(L,R);
+        L = Builder.CreateAnd(L,R);
+        return Builder.CreateSIToFP(L, Type::getFloatTy(TheContext), "booltmp");
       }
       else if(operation == "||"){
-        return Builder.CreateOr(L,R);
+        L = Builder.CreateOr(L,R);
+         return Builder.CreateSIToFP(L, Type::getFloatTy(TheContext), "booltmp");
       }
     }
   }
@@ -2898,7 +2905,7 @@ int main(int argc, char **argv) {
   //   getNextToken();
   // }
   getNextToken();
-  static std::unique_ptr<ASTnode> graphic = parser();
+  static std::unique_ptr<ASTnode> graphic = expressionParser();
   //
   if(errorCount > 0) printf("============================\n");
   printf("%d Errors found\n", errorCount);
