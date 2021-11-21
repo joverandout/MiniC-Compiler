@@ -608,7 +608,7 @@ class BlockASTnode : public ASTnode {
 public:
   BlockASTnode(std::vector<std::unique_ptr<globalASTnode>> newDeclarations, std::vector<std::unique_ptr<ASTnode>> newStatements) :
   declarations(std::move(newDeclarations)), statements(std::move(newStatements)){}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
   virtual std::string to_string() const override {    
     std::string tostring = "";
     if(declarations.size() >= 1){
@@ -979,7 +979,7 @@ public:
   virtual ~programASTnode(){};
   programASTnode(std::vector<std::unique_ptr<externASTnode>> Externs, std::vector<std::unique_ptr<ASTnode>> Decls) : externList(std::move(Externs)), declList(std::move(Decls)) {}
   programASTnode(std::vector<std::unique_ptr<ASTnode>> Decls) : declList(std::move(Decls)) {}
-  virtual Value *codegen() override {};
+  virtual Value *codegen() override;
 
   virtual std::string to_string() const override{
     std::string stringy = "--------------AST-------------\n";
@@ -2512,9 +2512,12 @@ Function *externASTnode::codegen(){
   std::vector<Type*> parameterTypes;
 
   if(parameters.size() >0){
+    printf("int x\n");
     for (int i = 0; i < parameters.size(); i++)
     {
       type2 = parameters.at(i)->getType();
+      printf("\ntype2 = %s\n", std::to_string(type2).c_str());
+      printf("name2 = %s\n", parameters.at(i)->getName().c_str());
       if(type2 == INT_TOK){
         parameterTypes.push_back(Type::getInt32Ty(TheContext));
       }
@@ -2526,32 +2529,34 @@ Function *externASTnode::codegen(){
       }
     }
   }
-    Type* returnt;
-    type2 = type ->getType();
-    if(type2 == INT_TOK){
-      returnt = Type::getInt32Ty(TheContext);
-    }
-    if(type2 == FLOAT_TOK){
-      returnt = Type::getFloatTy(TheContext);
-    }
-    if(type2 == BOOL_TOK){
-      returnt = Type::getInt1Ty(TheContext);
-    }
-    if(type2 == VOID_TOK){
-      returnt = Type::getVoidTy(TheContext);
-    }
-    else{
-      return nullptr;
-    }
+  Type* returnt;
+  type2 = type->getType();
+  if(type2 == INT_TOK){
+    returnt = Type::getInt32Ty(TheContext);
+  }
+  else if(type2 == FLOAT_TOK){
+    returnt = Type::getFloatTy(TheContext);
+  }
+  else if(type2 == BOOL_TOK){
+    returnt = Type::getInt1Ty(TheContext);
+  }
+  else if(type2 == VOID_TOK){
+    returnt = Type::getVoidTy(TheContext);
+  }
+  else{
+    return nullptr;
+  }
 
-    FunctionType *FunctionType = FunctionType::get(returnt, parameterTypes, false);
-    Function *F = Function::Create(FunctionType, Function::ExternalLinkage, getName(), TheModule.get());
+  FunctionType *FunctionType = FunctionType::get(returnt, parameterTypes, false);
+  Function *F = Function::Create(FunctionType, Function::ExternalLinkage, identifer->to_string(), TheModule.get());
 
-    unsigned Idx = 0;
-    for (auto &Arg: F->args()){
-      Arg.setName(parameters.at(Idx)->getName());
-      Idx++;
-    }
+  unsigned Idx = 0;
+  for (auto &Arg: F->args()){
+    Arg.setName(parameters.at(Idx)->getName());
+    printf("\n parameter name %s\n", parameters.at(Idx)->getName().c_str());
+    Idx++;
+  }
+
   return F;
 }
 
@@ -2791,7 +2796,67 @@ Value *notAndNegativeASTnode::codegen(){
   }
 }
 
+Value *BlockASTnode::codegen(){
+  Value *Rvalue;
+  std::vector<AllocaInst*> temp;
+  int size = declarations.size(); 
+  if(size > 0){
+    Function *func = Builder.GetInsertBlock()->getParent();
+    Type *type;
+    Value *value;
 
+    for (size_t i = 0; i < size; i++)
+    {
+      if(declarations[i]->getType() == INT_TOK){
+        type = Type::getInt32Ty(TheContext);
+        value = ConstantInt::get(TheContext, APInt(32,0));
+      }
+      else if(declarations[i]->getType() == BOOL_TOK){
+        type = Type::getInt1Ty(TheContext);
+        value = ConstantInt::get(TheContext, APInt(1,0));
+      }
+      else if(declarations[i]->getType() == FLOAT_TOK){
+        type = Type::getFloatTy(TheContext);
+        value = ConstantFP::get(TheContext, APFloat(0.0));
+      }
+      IRBuilder<> Tmp(&func->getEntryBlock(), func->getEntryBlock().begin());
+      AllocaInst *allocation = Tmp.CreateAlloca(type, 0, declarations[i]->get_name().c_str());
+
+      temp.push_back(NamedValues[declarations[i]->get_name()]);
+      NamedValues[declarations[i]->get_name()] = allocation;
+    }
+  }
+  
+  int  size2 = statements.size();
+  for (size_t i = 0; i < size2; i++)
+  {
+    Rvalue = statements.at(i)->codegen();
+  }
+  int size3 = declarations.size();
+  for (size_t i = 0; i < size3; i++)
+  {
+    NamedValues[declarations[i]->get_name()] = temp[i];
+  }
+
+  return Rvalue;
+}
+
+
+
+Value *programASTnode::codegen(){
+  Value *declarations;
+  int size = externList.size();
+  for (size_t i = 0; i < size; i++)
+  {
+    externList.at(i)->codegen();
+  }
+  int size2 = declList.size();
+  for (size_t i = 0; i < size2; i++)
+  {
+    declarations = declList.at(i)->codegen();
+  }
+  return declarations;
+}
 
 
 
@@ -2850,6 +2915,9 @@ int main(int argc, char **argv) {
 
   //********************* Start printing final IR **************************
   // Print out all of the generated code into a file called output.ll
+
+  graphic->codegen();
+
   auto Filename = "output.ll";
   std::error_code EC;
   raw_fd_ostream dest(Filename, EC, sys::fs::F_None);
@@ -2858,9 +2926,12 @@ int main(int argc, char **argv) {
     errs() << "Could not open file: " << EC.message();
     return 1;
   }
-  // TheModule->print(errs(), nullptr); // print IR to terminal
+  std::cout << "\n---------------IR--------------" << '\n';
+  TheModule->print(errs(), nullptr); // print IR to terminal
+  std::cout << "\n---------------IR--------------" << std::endl;
   TheModule->print(dest, nullptr);
   //********************* End printing final IR ****************************
+
 
   fclose(pFile); // close the file that contains the code that was parsed
   return 0;
