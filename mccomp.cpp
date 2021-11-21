@@ -473,7 +473,7 @@ public:
   notAndNegativeASTnode(char Prefix, TOKEN Token, std::unique_ptr<ASTnode> Expression) : prefix(Prefix), token(Token), expression(std::move(Expression)) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
-    return "\nPREFIX: " + std::string(1, prefix) + "\nNAME: " + name;
+    return "prefix: " + std::string(1, prefix) + " name: " + name;
   }
 };
 
