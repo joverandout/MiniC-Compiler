@@ -13,7 +13,7 @@ int While(int n){
   print_int(test); 
   while(result < 10)
     result = result + 1;  
-    //print_int(result);    
+    print_int(result);    
    
   return result;
 }

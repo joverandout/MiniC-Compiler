@@ -761,7 +761,7 @@ public:
       else stringy = stringy + "|      ";
     }
     
-    stringy = stringy + "|  type: "  + type->to_string();
+    stringy = stringy + "|  type: "  + type->to_string() + "\n";
     return stringy;
   }
   int getType(){
@@ -1030,6 +1030,8 @@ static std::unique_ptr<ifASTnode> ifParser();
 static std::unique_ptr<whileASTnode> whileParser();
 static std::unique_ptr<BlockASTnode> blockParser();
 static std::unique_ptr<parameterASTnode> paramParser();
+
+
 
 static bool argListChecker(){
   if(CurTok.type == COMMA ) return false;
@@ -1911,7 +1913,27 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
     errorMessage();
     return nullptr;
   }
+   printf(CurTok.lexeme.c_str());
+  // getNextToken();
+  // printf("\n");
+  // printf(CurTok.lexeme.c_str());
+  // getNextToken();
+  // printf("\n");
+  // printf(CurTok.lexeme.c_str());
+  // getNextToken();
+  // printf("\n");
+  // printf(CurTok.lexeme.c_str());
+  // getNextToken();
+  // printf("\n");
+
   auto type = varighttypeParser();
+
+  printf("\n");
+
+     printf(CurTok.lexeme.c_str());
+  // getNextToken();
+  printf("\n");
+  
   auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
   if(CurTok.type == IDENT){
     getNextToken();
@@ -1920,6 +1942,7 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
     line();printf("ERROR: Missing Identifier\n");
     errorMessage();
   }
+
   if(CurTok.type == SC){
     getNextToken();
   }
@@ -1937,7 +1960,8 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
 
 static std::unique_ptr<functionASTnode> functionDeclarationParser(){
   auto typeSpec = typeSpecParser();
-  getNextToken();
+  // printf("\nFunction type: %s\n", typeSpec->to_string().c_str());
+  // printf(CurTok.lexeme.c_str());
   if(CurTok.type != IDENT){
     line();printf("ERROR: Expected an identifier\n");
     errorMessage();
@@ -2008,18 +2032,39 @@ static std::unique_ptr<ASTnode> declParser(){
     return nullptr;
   }
   else{
-    TOKEN tokens[2]; 
-    for (int i = 0; i < 2; i++) {
-      tokens[i] = CurTok;
-      getNextToken();
-    }
-    TOKEN lookahead = CurTok;
-    putBackToken(lookahead);
-    putBackToken(tokens[1]);
-    putBackToken(tokens[0]);
-
+    TOKEN one = CurTok;
     getNextToken();
-    if(lookahead.type == SC){
+    TOKEN two = CurTok;
+    getNextToken();
+    TOKEN sc = CurTok;
+    printf("+++++++++++++++++++++++++++\n");
+  printf(one.lexeme.c_str());
+  printf("\n");
+  printf(two.lexeme.c_str());
+  printf("\n");
+  printf(sc.lexeme.c_str());
+  printf("\n");    printf("+++++++++++++++++++++++++++\n");
+
+    putBackToken(sc);
+    putBackToken(two);
+    putBackToken(one);
+    getNextToken();
+    
+    // printf(CurTok.lexeme.c_str());
+    // getNextToken();
+    // printf("\n");
+    // printf(CurTok.lexeme.c_str());
+    // getNextToken();
+    // printf("\n");
+    // printf(CurTok.lexeme.c_str());
+    // getNextToken();
+    // printf("\n");
+    // printf(CurTok.lexeme.c_str());
+    // getNextToken();
+    // printf("\n");
+
+    CurTok = one;
+    if(sc.type == SC){
       auto variableDeclaration = variableDeclarationParser();
       if(CurTok.type==VOID_TOK || CurTok.type==INT_TOK || CurTok.type==FLOAT_TOK || CurTok.type==BOOL_TOK || CurTok.type==EOF_TOK){
       return variableDeclaration;
@@ -2626,10 +2671,6 @@ Function *functionASTnode::codegen(){
 }
 
 Value *assignmentASTnode::codegen(){
-  identASTnode *identC = dynamic_cast<identASTnode*>(ident.get());
-  if(!identC){
-    LogErrorV("must use '=' in conjunction with variable declaration");
-  }
   Value *value = expr->codegen();
   if(value){
     Value *variableName = NamedValues[ident->to_string()];
@@ -2662,23 +2703,6 @@ Value *globalASTnode::codegen(){
     return new GlobalVariable(*TheModule, Type::getFloatTy(TheContext), false, GlobalValue::CommonLinkage, ConstantFP::get(TheContext, APFloat((float)0)), ident->to_string());
   }
   return nullptr;
-  // std::string Name = get_name();
-  // Value *initial;
-  // llvm::Type *alloca_type;  
-  // if(type->getType() == INT_TOK){
-  //   alloca_type = Type::getInt32Ty(TheContext);
-  //   initial = ConstantInt::get(TheContext, APInt(32, 0, false));
-  // }
-  // else if (type->getType() == BOOL_TOK){
-  //   alloca_type = Type::getInt1Ty(TheContext);
-  //   initial = ConstantInt::get(TheContext, APInt(1, 0, false));
-  // }  
-  // else if (type->getType() == FLOAT_TOK){
-  //   alloca_type = Type::getFloatTy(TheContext);
-  //   initial = ConstantFP::get(TheContext, APFloat(0.0));
-  // } 
-  // GlobalNamedValues[Name]= initial;
-  // return nullptr;
 }
 
 Value *returnASTnode::codegen() {

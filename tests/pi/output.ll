@@ -3,10 +3,6 @@ source_filename = "mini-c"
 
 define float @pi() {
 block:
-  %d = alloca float, align 4
-  %c = alloca float, align 4
-  %b = alloca float, align 4
-  %a = alloca float, align 4
   %i = alloca i32, align 4
   %PI = alloca float, align 4
   %flag = alloca i1, align 1
@@ -26,61 +22,55 @@ condition:                                        ; preds = %"after if block", %
   br i1 %"loop cond", label %"while loop", label %"after loop"
 
 "while loop":                                     ; preds = %condition
-  %i5 = load i32, i32* %i, align 4
-  %"converted LHS to type FLOAT" = sitofp i32 %i5 to float
-  %addtmp = fadd float %"converted LHS to type FLOAT", 2.000000e+00
-  %a6 = load float, float* %a, align 4
-  store float %addtmp, float* %a, align 4
-  %i7 = load i32, i32* %i, align 4
-  %"converted LHS to type FLOAT8" = sitofp i32 %i7 to float
-  %addtmp9 = fadd float %"converted LHS to type FLOAT8", 1.000000e+00
-  %b10 = load float, float* %b, align 4
-  store float %addtmp9, float* %b, align 4
-  %i11 = load i32, i32* %i, align 4
-  %a12 = load float, float* %a, align 4
-  %b13 = load float, float* %b, align 4
-  %multmp = fmul float %a12, %b13
-  %"converted LHS to type FLOAT14" = sitofp i32 %i11 to float
-  %multmp15 = fmul float %"converted LHS to type FLOAT14", %multmp
-  %c16 = load float, float* %c, align 4
-  store float %multmp15, float* %c, align 4
-  %c17 = load float, float* %c, align 4
-  %dictmp = fdiv float 4.000000e+00, %c17
-  %d18 = load float, float* %d, align 4
-  store float %dictmp, float* %d, align 4
-  %flag19 = load i1, i1* %flag, align 1
-  %ifconditionS = icmp ne i1 %flag19, false
+  %flag5 = load i1, i1* %flag, align 1
+  %ifconditionS = icmp ne i1 %flag5, false
   br i1 %ifconditionS, label %then, label %"else bock"
 
 "after loop":                                     ; preds = %condition
-  %PI32 = load float, float* %PI, align 4
-  ret float %PI32
+  %PI30 = load float, float* %PI, align 4
+  ret float %PI30
 
 then:                                             ; preds = %"while loop"
-  %PI20 = load float, float* %PI, align 4
-  %d21 = load float, float* %d, align 4
-  %addtmp22 = fadd float %PI20, %d21
-  %PI23 = load float, float* %PI, align 4
-  store float %addtmp22, float* %PI, align 4
+  %PI6 = load float, float* %PI, align 4
+  %i7 = load i32, i32* %i, align 4
+  %i8 = load i32, i32* %i, align 4
+  %addtmp = add i32 %i8, 1
+  %multmp = mul i32 %i7, %addtmp
+  %i9 = load i32, i32* %i, align 4
+  %addtmp10 = add i32 %i9, 2
+  %multmp11 = mul i32 %multmp, %addtmp10
+  %"converted RHS to type FLOAT" = sitofp i32 %multmp11 to float
+  %dictmp = fdiv float 4.000000e+00, %"converted RHS to type FLOAT"
+  %addtmp12 = fadd float %PI6, %dictmp
+  %PI13 = load float, float* %PI, align 4
+  store float %addtmp12, float* %PI, align 4
   br label %"after if block"
 
 "else bock":                                      ; preds = %"while loop"
+  %PI14 = load float, float* %PI, align 4
+  %i15 = load i32, i32* %i, align 4
+  %i16 = load i32, i32* %i, align 4
+  %addtmp17 = add i32 %i16, 1
+  %multmp18 = mul i32 %i15, %addtmp17
+  %i19 = load i32, i32* %i, align 4
+  %addtmp20 = add i32 %i19, 2
+  %multmp21 = mul i32 %multmp18, %addtmp20
+  %"converted RHS to type FLOAT22" = sitofp i32 %multmp21 to float
+  %dictmp23 = fdiv float 4.000000e+00, %"converted RHS to type FLOAT22"
+  %subtmp = fsub float %PI14, %dictmp23
   %PI24 = load float, float* %PI, align 4
-  %d25 = load float, float* %d, align 4
-  %subtmp = fsub float %PI24, %d25
-  %PI26 = load float, float* %PI, align 4
   store float %subtmp, float* %PI, align 4
   br label %"after if block"
 
 "after if block":                                 ; preds = %"else bock", %then
-  %"then tmp" = phi float [ %addtmp22, %then ], [ %subtmp, %"else bock" ]
-  %flag27 = load i1, i1* %flag, align 1
-  %"not temp" = xor i1 %flag27, true
-  %flag28 = load i1, i1* %flag, align 1
+  %"then tmp" = phi float [ %addtmp12, %then ], [ %subtmp, %"else bock" ]
+  %flag25 = load i1, i1* %flag, align 1
+  %"not temp" = xor i1 %flag25, true
+  %flag26 = load i1, i1* %flag, align 1
   store i1 %"not temp", i1* %flag, align 1
+  %i27 = load i32, i32* %i, align 4
+  %addtmp28 = add i32 %i27, 2
   %i29 = load i32, i32* %i, align 4
-  %addtmp30 = add i32 %i29, 2
-  %i31 = load i32, i32* %i, align 4
-  store i32 %addtmp30, i32* %i, align 4
+  store i32 %addtmp28, i32* %i, align 4
   br label %condition
 }
