@@ -3,7 +3,7 @@ source_filename = "mini-c"
 
 declare i32 @print_int(i32)
 
-define void @"("() {
+define void @Void() {
 block:
   %result = alloca i32, align 4
   %result1 = load i32, i32* %result, align 4

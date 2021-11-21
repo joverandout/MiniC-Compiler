@@ -473,7 +473,7 @@ public:
   notAndNegativeASTnode(char Prefix, TOKEN Token, std::unique_ptr<ASTnode> Expression) : prefix(Prefix), token(Token), expression(std::move(Expression)) {}
   virtual Value *codegen() override;
   virtual std::string to_string() const override {
-    return "prefix: " + std::string(1, prefix) + " name: " + name;
+    return "prefix: " + std::string(1, prefix) + " name: " + expression->to_string();
   }
 };
 
@@ -761,7 +761,7 @@ public:
       else stringy = stringy + "|      ";
     }
     
-    stringy = stringy + "|  type: "  + type->to_string() + "\n";
+    stringy = stringy + "|  type: "  + type->to_string();
     return stringy;
   }
   int getType(){
@@ -1168,12 +1168,10 @@ static std::unique_ptr<ASTnode> ElementParser(){
     TOKEN negativeToken = CurTok;
     getNextToken();
     auto element = ElementParser();
-    auto newResult = nullptr;
     if(element){
       auto neg = std::make_unique<notAndNegativeASTnode>(oper, negativeToken, std::move(element));
       return std::move(neg);
     }
-    if(newResult) return newResult;
   }
   else if(CurTok.type == NOT){
     char oper = '!';
@@ -1185,7 +1183,6 @@ static std::unique_ptr<ASTnode> ElementParser(){
       auto neg = std::make_unique<notAndNegativeASTnode>(oper, notToken, std::move(element));
       return std::move(neg);
     }
-    if(newResult) return newResult;
   }
   else if(CurTok.type == IDENT){
     TOKEN identifier = CurTok;
@@ -1913,7 +1910,7 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
     errorMessage();
     return nullptr;
   }
-   printf(CurTok.lexeme.c_str());
+  //printf(CurTok.lexeme.c_str());
   // getNextToken();
   // printf("\n");
   // printf(CurTok.lexeme.c_str());
@@ -1928,11 +1925,11 @@ static std::unique_ptr<parameterASTnode> variableDeclarationParser(){
 
   auto type = varighttypeParser();
 
-  printf("\n");
+  // printf("\n");
 
-     printf(CurTok.lexeme.c_str());
-  // getNextToken();
-  printf("\n");
+  //    printf(CurTok.lexeme.c_str());
+  // // getNextToken();
+  // printf("\n");
   
   auto ident = std::make_unique<identASTnode>(CurTok, CurTok.lexeme);
   if(CurTok.type == IDENT){
@@ -2037,14 +2034,6 @@ static std::unique_ptr<ASTnode> declParser(){
     TOKEN two = CurTok;
     getNextToken();
     TOKEN sc = CurTok;
-    printf("+++++++++++++++++++++++++++\n");
-  printf(one.lexeme.c_str());
-  printf("\n");
-  printf(two.lexeme.c_str());
-  printf("\n");
-  printf(sc.lexeme.c_str());
-  printf("\n");    printf("+++++++++++++++++++++++++++\n");
-
     putBackToken(sc);
     putBackToken(two);
     putBackToken(one);
@@ -2202,13 +2191,16 @@ static std::vector<std::unique_ptr<externASTnode>> externListPrimeParser(){
   std::vector<std::unique_ptr<externASTnode>> externListPrime;
   std::vector<std::unique_ptr<externASTnode>> returner;
 
+  // printf(CurTok.lexeme.c_str());
+  // printf("\n");
+  printf(CurTok.lexeme.c_str());
   if(CurTok.type != EXTERN && CurTok.type != VOID_TOK && CurTok.type != INT_TOK && CurTok.type != FLOAT_TOK && CurTok.type != BOOL_TOK)
   {
     line();printf("ERROR: Missing 'extern' or a type - INT FLOAT BOOL or VOID\n");
     errorMessage();
     return returner;
   }
-
+  printf(CurTok.lexeme.c_str());
   if(CurTok.type == EXTERN){
     auto externN = externParser();
     auto externPrimeE = externListPrimeParser();
@@ -2216,7 +2208,9 @@ static std::vector<std::unique_ptr<externASTnode>> externListPrimeParser(){
     if(externN){
       externListPrime.push_back(std::move(externN));
     }
-    int size = externListPrime.size();
+
+    int size = externPrimeE.size();
+
     for (size_t i = 0; i < size; i++)
     {
       externListPrime.push_back(std::move(externPrimeE.at(i)));
@@ -2228,7 +2222,6 @@ static std::vector<std::unique_ptr<externASTnode>> externListPrimeParser(){
     }
     return externListPrime;
   }
-
   return returner;
 }
 
@@ -2280,7 +2273,6 @@ static std::unique_ptr<ASTnode> parser() {
   }
   if(externListBool){
     auto externlist = externListParser();
-    //printf("%s", externlist.at(0)->to_string().c_str());
     auto declList = globalsListParser();
     if(CurTok.type != EOF_TOK){
       line();printf("ERROR: EOF expected after decls\n");
@@ -2580,8 +2572,6 @@ Function *externASTnode::codegen(){
     for (int i = 0; i < parameters.size(); i++)
     {
       type2 = parameters.at(i)->getType();
-      //printf("\ntype2 = %s\n", std::to_string(type2).c_str());
-      //printf("name2 = %s\n", parameters.at(i)->getName().c_str());
       if(type2 == INT_TOK){
         parameterTypes.push_back(Type::getInt32Ty(TheContext));
       }
@@ -2590,6 +2580,9 @@ Function *externASTnode::codegen(){
       }
       else if(type2 == FLOAT_TOK){
         parameterTypes.push_back(Type::getFloatTy(TheContext));
+      }
+      else if(type2 == VOID_TOK){
+
       }
     }
   }

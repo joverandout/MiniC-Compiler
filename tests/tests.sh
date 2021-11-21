@@ -71,12 +71,12 @@ rm -rf output.ll while
 $CLANG driver.cpp output.ll -o while
 validate "./while"
 
-# cd ../void
-# pwd
-# rm -rf output.ll void
-# "$COMP" ./void.c 
-# $CLANG driver.cpp output.ll -o void
-# validate "./void"
+cd ../void
+pwd
+rm -rf output.ll void
+"$COMP" ./void.c 
+$CLANG driver.cpp output.ll -o void
+validate "./void"
 
 cd ../cosine
 pwd
@@ -85,12 +85,12 @@ rm -rf output.ll cosine
 $CLANG driver.cpp output.ll -o cosine
 validate "./cosine"
 
-# cd ../unary
-# pwd
-# rm -rf output.ll unary
-# "$COMP" ./unary.c
-# $CLANG driver.cpp output.ll -o unary
-# validate "./unary"
+cd ../unary
+pwd
+rm -rf output.ll unary
+"$COMP" ./unary.c
+$CLANG driver.cpp output.ll -o unary
+validate "./unary"
 
 cd ../recurse
 pwd
