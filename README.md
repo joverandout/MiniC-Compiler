@@ -24,8 +24,8 @@ For this example we will be using the MiniC code `addition.c`
 extern int print_int(int X);
 
 int addition(int n, int m){
-	int result;
-	result = n + m;
+  int result;
+  result = n + m;
   
 
   if(n == 4) {
