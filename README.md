@@ -65,9 +65,9 @@ Declarations:
     |      |      ├──Assignment: 
     |      |      |      Name :result
     |      |      |      Value: Expression:
-    |      |      |      |      |      ├──Left hand side: n
-    |      |      |      |      |      ├──Operator: +
-    |      |      |      |      |      ├──Right hand side: m
+    |      |      |      |      ├──Left hand side: n
+    |      |      |      |      ├──Operator: +
+    |      |      |      |      ├──Right hand side: m
     |      |      ├──If statement:
     |      |      |      ├──Condition: Expression:
     |      |      |      |      ├──Left hand side: n
