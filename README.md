@@ -16,14 +16,80 @@ Compile and build the lexer with
 make
 ```
 
+
+For this example we will be using the MiniC code `addition.c`
+
+```
+// MiniC program to test addition
+extern int print_int(int X);
+
+int addition(int n, int m){
+	int result;
+	result = n + m;
+  
+
+  if(n == 4) {
+    print_int(n+m);
+  }
+  else {
+    print_int(n*m);
+  }
+
+  return result;
+}
+```
+
+
 From there you can lex some MiniC code with the following command
 ```
-./mccomp user_code.c
+./mccomp addition.c
 ```
 
 This will generate and AST tree which is also outputted for ease of reading. as seen here
 
-![alt text](https://media.discordapp.net/attachments/192724811594596352/915193021748879380/unknown.png?width=602&height=678)
+```
+--------------AST-------------
+Externs:
+    ├──function: print_int
+    |  type: 'INT'
+    |  parameters: 
+    |      ├──Variable: X
+    |      |  type: 'INT'
+Declarations:
+    ├──function: addition
+    |  body: 
+    |      ├──Declarations of local variables: 
+    |      |      ├──Variable declared:result
+    |      |      |  Type: int
+    |      ├──Statements: 
+    |      |      ├──Assignment: 
+    |      |      |      Name :result
+    |      |      |      Value: Expression:
+    |      |      |      |      |      ├──Left hand side: n
+    |      |      |      |      |      ├──Operator: +
+    |      |      |      |      |      ├──Right hand side: m
+    |      |      ├──If statement:
+    |      |      |      ├──Condition: Expression:
+    |      |      |      |      ├──Left hand side: n
+    |      |      |      |      ├──Operator: ==
+    |      |      |      |      ├──Right hand side: 4
+    |      |      |      ├──Block: 
+    |      |      |      |      ├──Statements: 
+    |      |      |      |      |      ├──call to: print_int
+    |      |      |      |      |      |      ├──Argument: Expression:
+    |      |      |      |      |      |      |      ├──Left hand side: n
+    |      |      |      |      |      |      |      ├──Operator: +
+    |      |      |      |      |      |      |      ├──Right hand side: m
+    |      |      |      ├──Else block: 
+    |      |      |      |      ├──Statements: 
+    |      |      |      |      |      ├──call to: print_int
+    |      |      |      |      |      |      ├──Argument: Expression:
+    |      |      |      |      |      |      |      ├──Left hand side: n
+    |      |      |      |      |      |      |      ├──Operator: *
+    |      |      |      |      |      |      |      ├──Right hand side: m
+    |      |      ├──Return Statement:
+    |      |      |      ├──Expression: result
+```
 
 To run the code and evaluate it after parsing first create an output:
 
@@ -39,3 +105,5 @@ clang++ driver.cpp output.ll -o add
 ```
 
 This should output a result or throw an error.
+
+![alt text](https://cdn.discordapp.com/attachments/192724811594596352/915194527558545438/unknown.png)
