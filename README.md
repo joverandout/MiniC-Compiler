@@ -107,3 +107,6 @@ clang++ driver.cpp output.ll -o add
 This should output a result or throw an error.
 
 ![alt text](https://cdn.discordapp.com/attachments/192724811594596352/915194527558545438/unknown.png)
+
+# Disclosure
+The code in this git repository is the copyright of Joe Moore and distribution or use is not allowed without explicit permission and without giving full credit
